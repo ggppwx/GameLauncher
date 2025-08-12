@@ -23,21 +23,45 @@ A modern game launcher built with Electron, React, and TypeScript. This applicat
 
 ## Installation
 
-1. Clone the repository:
+### Prerequisites
+- **Node.js** (version 18 or higher)
+- **npm** (comes with Node.js)
+
+### Quick Start
+
+1. **Clone the repository:**
 ```bash
-git clone <repository-url>
-cd GameLauncher
+git clone https://github.com/YOUR_USERNAME/game-launcher.git
+cd game-launcher
 ```
 
-2. Install dependencies:
+2. **Install dependencies:**
 ```bash
 npm install
 ```
 
-3. Start the development server:
+3. **Start the development server:**
 ```bash
 npm run dev
 ```
+
+The app will open automatically in Electron with hot reload enabled.
+
+### Alternative Installation Methods
+
+#### Using GitHub CLI
+```bash
+gh repo clone YOUR_USERNAME/game-launcher
+cd game-launcher
+npm install
+npm run dev
+```
+
+#### Download ZIP
+1. Click the green "Code" button on GitHub
+2. Select "Download ZIP"
+3. Extract and navigate to the folder
+4. Run `npm install` and `npm run dev`
 
 ## Development
 
