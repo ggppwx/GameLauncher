@@ -3,9 +3,10 @@ import { Loader2 } from 'lucide-react'
 
 interface LoadingOverlayProps {
   show: boolean
+  message?: string
 }
 
-export function LoadingOverlay({ show }: LoadingOverlayProps) {
+export function LoadingOverlay({ show, message = "Scanning for games..." }: LoadingOverlayProps) {
   return (
     <AnimatePresence>
       {show && (
@@ -37,7 +38,7 @@ export function LoadingOverlay({ show }: LoadingOverlayProps) {
                 transition={{ delay: 0.2 }}
                 className="text-lg font-semibold text-gray-800"
               >
-                Scanning for games...
+                {message}
               </motion.h3>
               
               <motion.p

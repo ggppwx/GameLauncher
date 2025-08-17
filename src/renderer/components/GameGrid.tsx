@@ -7,9 +7,10 @@ interface GameGridProps {
   games: Game[]
   onLaunchGame: (game: Game) => void
   onRemoveGame: (gameId: string) => void
+  onTagsUpdated: () => void
 }
 
-export function GameGrid({ games, onLaunchGame, onRemoveGame }: GameGridProps) {
+export function GameGrid({ games, onLaunchGame, onRemoveGame, onTagsUpdated }: GameGridProps) {
   if (games.length === 0) {
     return (
       <motion.div
@@ -58,29 +59,16 @@ export function GameGrid({ games, onLaunchGame, onRemoveGame }: GameGridProps) {
         transition={{ duration: 0.5 }}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
       >
-        <AnimatePresence>
-          {games.map((game, index) => (
-            <motion.div
-              key={game.id}
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.9 }}
-              transition={{ 
-                duration: 0.3, 
-                delay: index * 0.1,
-                type: "spring",
-                stiffness: 100
-              }}
-              layout
-            >
-              <GameCard
-                game={game}
-                onLaunch={onLaunchGame}
-                onRemove={onRemoveGame}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {games.map((game) => (
+          <div key={game.id}>
+            <GameCard
+              game={game}
+              onLaunch={onLaunchGame}
+              onRemove={onRemoveGame}
+              onTagsUpdated={onTagsUpdated}
+            />
+          </div>
+        ))}
       </motion.div>
     </div>
   )
