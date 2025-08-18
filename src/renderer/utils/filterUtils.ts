@@ -11,7 +11,7 @@ export function filterGamesBySearch(games: Game[], searchTerm: string): Game[] {
     game.name.toLowerCase().includes(term) ||
     game.developer?.toLowerCase().includes(term) ||
     game.publisher?.toLowerCase().includes(term) ||
-    game.genres?.some(genre => genre.toLowerCase().includes(term))
+    (game.genres && Array.isArray(game.genres) && game.genres.some(genre => genre.toLowerCase().includes(term)))
   );
 }
 
@@ -89,7 +89,7 @@ export function getUniqueGenres(games: Game[]): string[] {
   const genres = new Set<string>();
   
   games.forEach(game => {
-    if (game.genres) {
+    if (game.genres && Array.isArray(game.genres)) {
       game.genres.forEach(genre => genres.add(genre));
     }
   });

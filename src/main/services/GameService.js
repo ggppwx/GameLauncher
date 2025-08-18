@@ -1,11 +1,14 @@
 const { getOrDownloadThumbnail, getGameMetadata, getOrDownloadCoverImage } = require('../thumbnailManager');
 const fs = require('fs-extra');
 const path = require('path');
+const { extractProcessFromManifest } = require('../utils/gameProcessFinder');
 
 class GameService {
-  constructor(db, configService) {
+  constructor(db, configService, gameSessionService, gameMonitorService) {
     this.db = db;
     this.configService = configService;
+    this.gameSessionService = gameSessionService;
+    this.gameMonitorService = gameMonitorService;
   }
 
   async getAllGames() {
@@ -13,10 +16,13 @@ class GameService {
       this.db.all('SELECT * FROM games', (err, rows) => {
         if (err) reject(err);
         else {
-          // Parse tags from JSON string
+          // Parse JSON fields from database
           const games = rows.map(row => ({
             ...row,
-            tags: row.tags ? JSON.parse(row.tags) : []
+            tags: row.tags ? JSON.parse(row.tags) : [],
+            genres: row.genres ? JSON.parse(row.genres) : [],
+            categories: row.categories ? JSON.parse(row.categories) : [],
+            platforms: row.platforms ? JSON.parse(row.platforms) : null
           }));
           resolve(games);
         }
@@ -119,13 +125,22 @@ class GameService {
                 
                 console.log(`Processing game: ${name} (${appId})`);
                 
-                const appInfo = {
-                  id: `steam-${appId}`,
-                  appid: appId,
-                  name: name,
-                  path: libraryPath,
-                  type: 'steam'
-                };
+                                 const appInfo = {
+                   id: `steam-${appId}`,
+                   appid: appId,
+                   name: name,
+                   path: libraryPath,
+                   type: 'steam'
+                 };
+
+                 // Extract process information from manifest
+                 const processName = extractProcessFromManifest(manifestPath);
+                 if (processName) {
+                   appInfo.process = processName;
+                   console.log(`Found process for ${appInfo.name}: ${processName}`);
+                 } else {
+                   console.log(`No process found for ${appInfo.name} in manifest: ${manifestPath}`);
+                 }
                 
                 // Fetch metadata and download images (with timeout)
                 let thumbnailPath = null;
@@ -134,24 +149,24 @@ class GameService {
                 
                 if (appInfo.type === 'steam') {
                   try {
-                    // Set a timeout for metadata fetching
-                    const metadataPromise = getGameMetadata(appInfo.id);
-                    const timeoutPromise = new Promise((_, reject) => 
-                      setTimeout(() => reject(new Error('Metadata fetch timeout')), 15000)
-                    );
-                    
-                    metadata = await Promise.race([metadataPromise, timeoutPromise]);
-                    
-                    // Set a timeout for thumbnail downloading
-                    const thumbnailPromise = getOrDownloadThumbnail(appInfo.id);
-                    const thumbnailTimeoutPromise = new Promise((_, reject) => 
-                      setTimeout(() => reject(new Error('Thumbnail download timeout')), 10000)
-                    );
-                    
-                    thumbnailPath = await Promise.race([thumbnailPromise, thumbnailTimeoutPromise]);
-                    
-                    // Set a timeout for cover image downloading
-                    const coverPromise = getOrDownloadCoverImage(appInfo.id);
+                                         // Set a timeout for metadata fetching
+                     const metadataPromise = getGameMetadata(appInfo.appid);
+                     const timeoutPromise = new Promise((_, reject) => 
+                       setTimeout(() => reject(new Error('Metadata fetch timeout')), 15000)
+                     );
+                     
+                     metadata = await Promise.race([metadataPromise, timeoutPromise]);
+                     
+                     // Set a timeout for thumbnail downloading
+                     const thumbnailPromise = getOrDownloadThumbnail(appInfo.appid);
+                     const thumbnailTimeoutPromise = new Promise((_, reject) => 
+                       setTimeout(() => reject(new Error('Thumbnail download timeout')), 10000)
+                     );
+                     
+                     thumbnailPath = await Promise.race([thumbnailPromise, thumbnailTimeoutPromise]);
+                     
+                     // Set a timeout for cover image downloading
+                     const coverPromise = getOrDownloadCoverImage(appInfo.appid);
                     const coverTimeoutPromise = new Promise((_, reject) => 
                       setTimeout(() => reject(new Error('Cover download timeout')), 10000)
                     );
@@ -192,53 +207,54 @@ class GameService {
                   }
                 }
                 
-                // Save to DB
-                await new Promise((resolve, reject) => {
-                  this.db.run(
-                    `INSERT INTO games (id, appid, name, path, type, thumbnail, description, shortDescription, genres, releaseDate, developer, publisher, metacritic, categories, platforms, backgroundImage, headerImage, capsuleImage, capsuleImageV5, backgroundRaw, coverImage, isFree, requiredAge, supportedLanguages, website, recommendations, steamGridCover, steamGridHero, steamGridLogo, steamGridGameId)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                     ON CONFLICT(id) DO UPDATE SET
-                       appid=excluded.appid, name=excluded.name, path=excluded.path, type=excluded.type,
-                       thumbnail=excluded.thumbnail, description=excluded.description, shortDescription=excluded.shortDescription,
-                       genres=excluded.genres, releaseDate=excluded.releaseDate, developer=excluded.developer,
-                       publisher=excluded.publisher, metacritic=excluded.metacritic, categories=excluded.categories,
-                       platforms=excluded.platforms, backgroundImage=excluded.backgroundImage, headerImage=excluded.headerImage,
-                       capsuleImage=excluded.capsuleImage, capsuleImageV5=excluded.capsuleImageV5, backgroundRaw=excluded.backgroundRaw,
-                       coverImage=excluded.coverImage, isFree=excluded.isFree, requiredAge=excluded.requiredAge, supportedLanguages=excluded.supportedLanguages,
-                       website=excluded.website, recommendations=excluded.recommendations, steamGridCover=excluded.steamGridCover,
-                       steamGridHero=excluded.steamGridHero, steamGridLogo=excluded.steamGridLogo, steamGridGameId=excluded.steamGridGameId`,
-                    [
-                      appInfo.id,
-                      appInfo.appid,
-                      appInfo.name,
-                      appInfo.path,
-                      appInfo.type,
-                      thumbnailPath,
-                      appInfo.description,
-                      appInfo.shortDescription,
-                      appInfo.genres ? JSON.stringify(appInfo.genres) : null,
-                      appInfo.releaseDate,
-                      appInfo.developer,
-                      appInfo.publisher,
-                      appInfo.metacritic,
-                      appInfo.categories ? JSON.stringify(appInfo.categories) : null,
-                      appInfo.platforms ? JSON.stringify(appInfo.platforms) : null,
-                      appInfo.backgroundImage,
-                      appInfo.headerImage,
-                      appInfo.capsuleImage,
-                      appInfo.capsuleImageV5,
-                      appInfo.backgroundRaw,
-                      coverPath,
-                      appInfo.isFree ? 1 : 0,
-                      appInfo.requiredAge,
-                      appInfo.supportedLanguages,
-                      appInfo.website,
-                      appInfo.recommendations,
-                      appInfo.steamGridCover,
-                      appInfo.steamGridHero,
-                      appInfo.steamGridLogo,
-                      appInfo.steamGridGameId
-                    ],
+                                 // Save to DB
+                 await new Promise((resolve, reject) => {
+                   this.db.run(
+                     `INSERT INTO games (id, appid, name, path, type, thumbnail, process, description, shortDescription, genres, releaseDate, developer, publisher, metacritic, categories, platforms, backgroundImage, headerImage, capsuleImage, capsuleImageV5, backgroundRaw, coverImage, isFree, requiredAge, supportedLanguages, website, recommendations, steamGridCover, steamGridHero, steamGridLogo, steamGridGameId)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      ON CONFLICT(id) DO UPDATE SET
+                        appid=excluded.appid, name=excluded.name, path=excluded.path, type=excluded.type,
+                        thumbnail=excluded.thumbnail, process=excluded.process, description=excluded.description, shortDescription=excluded.shortDescription,
+                        genres=excluded.genres, releaseDate=excluded.releaseDate, developer=excluded.developer,
+                        publisher=excluded.publisher, metacritic=excluded.metacritic, categories=excluded.categories,
+                        platforms=excluded.platforms, backgroundImage=excluded.backgroundImage, headerImage=excluded.headerImage,
+                        capsuleImage=excluded.capsuleImage, capsuleImageV5=excluded.capsuleImageV5, backgroundRaw=excluded.backgroundRaw,
+                        coverImage=excluded.coverImage, isFree=excluded.isFree, requiredAge=excluded.requiredAge, supportedLanguages=excluded.supportedLanguages,
+                        website=excluded.website, recommendations=excluded.recommendations, steamGridCover=excluded.steamGridCover,
+                        steamGridHero=excluded.steamGridHero, steamGridLogo=excluded.steamGridLogo, steamGridGameId=excluded.steamGridGameId`,
+                     [
+                       appInfo.id,
+                       appInfo.appid,
+                       appInfo.name,
+                       appInfo.path,
+                       appInfo.type,
+                       thumbnailPath,
+                       appInfo.process,
+                       appInfo.description,
+                       appInfo.shortDescription,
+                       appInfo.genres ? JSON.stringify(appInfo.genres) : null,
+                       appInfo.releaseDate,
+                       appInfo.developer,
+                       appInfo.publisher,
+                       appInfo.metacritic,
+                       appInfo.categories ? JSON.stringify(appInfo.categories) : null,
+                       appInfo.platforms ? JSON.stringify(appInfo.platforms) : null,
+                       appInfo.backgroundImage,
+                       appInfo.headerImage,
+                       appInfo.capsuleImage,
+                       appInfo.capsuleImageV5,
+                       appInfo.backgroundRaw,
+                       coverPath,
+                       appInfo.isFree ? 1 : 0,
+                       appInfo.requiredAge,
+                       appInfo.supportedLanguages,
+                       appInfo.website,
+                       appInfo.recommendations,
+                       appInfo.steamGridCover,
+                       appInfo.steamGridHero,
+                       appInfo.steamGridLogo,
+                       appInfo.steamGridGameId
+                     ],
                     function (err) {
                       if (err) reject(err);
                       else resolve();
@@ -286,14 +302,52 @@ class GameService {
     }
   }
 
-  async launchGame(gamePath) {
+  async launchGame(gameData) {
     try {
-      const { spawn } = require('child_process');
-      spawn(gamePath, [], { detached: true });
-      return { success: true };
+      const { gameId, gamePath } = gameData;
+      
+      // Check if it's a Steam URL (steam://rungameid/)
+      if (gamePath.startsWith('steam://')) {
+        const { shell } = require('electron');
+        shell.openExternal(gamePath);
+        
+        // Start monitoring for Steam games
+        if (this.gameMonitorService && gameId) {
+          // Get the game from database to get process info
+          const game = await this.getGameById(gameId);
+          if (game && game.process) {
+            await this.gameMonitorService.startMonitoring(gameId, game.process);
+          }
+        }
+        
+        return { success: true };
+      } else {
+        // For regular games, use spawn
+        const { spawn } = require('child_process');
+        spawn(gamePath, [], { detached: true });
+        
+        // Start monitoring for regular games
+        if (this.gameMonitorService && gameId) {
+          const game = await this.getGameById(gameId);
+          if (game && game.process) {
+            await this.gameMonitorService.startMonitoring(gameId, game.process);
+          }
+        }
+        
+        return { success: true };
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
+  }
+
+  async getGameById(gameId) {
+    return new Promise((resolve, reject) => {
+      this.db.get('SELECT * FROM games WHERE id = ?', [gameId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
   }
 
   async getThumbnailPath(appId) {

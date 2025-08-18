@@ -17,6 +17,13 @@ export interface ElectronAPI {
   getTags: () => Promise<Tag[]>
   addTag: (tag: { name: string; color?: string; isDefault?: boolean }) => Promise<Tag>
   addTagsToGame: (gameId: string, tagNames: string[]) => Promise<{ success: boolean }>
+  // Session-related APIs
+  getGameStats: () => Promise<GameStats>
+  getGameSessions: () => Promise<GameSession[]>
+  getActiveSessions: () => Promise<GameSession[]>
+  endGameSession: (sessionId: string) => Promise<{ success: boolean }>
+  // Monitoring APIs
+  getMonitoredGames: () => Promise<MonitoredGame[]>
 }
 
 declare global {

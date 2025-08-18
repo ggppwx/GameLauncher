@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { BarChart3, TrendingUp, Gamepad2, Clock, Calendar, Trophy } from 'lucide-react'
+import { MonitoringDashboard } from './MonitoringDashboard'
 
 export function Statistics() {
   return (
@@ -135,11 +136,21 @@ export function Statistics() {
               </motion.div>
             </div>
 
-            {/* Coming Soon Section */}
+            {/* Game Monitoring Dashboard */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
+              className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-white/20"
+            >
+              <MonitoringDashboard />
+            </motion.div>
+
+            {/* Coming Soon Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
               className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-8 text-white"
             >
               <div className="text-center">

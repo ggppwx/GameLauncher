@@ -144,7 +144,7 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated }: GameCardPr
           </h3>
           
           <div className="game-card-meta">
-            {game.genres && game.genres.length > 0 && (
+            {game.genres && Array.isArray(game.genres) && game.genres.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-2">
                 {game.genres.slice(0, 2).map((genre, index) => (
                   <span

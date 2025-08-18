@@ -8,9 +8,14 @@ const { setupDB, getDB } = require('./main/db');
 const ConfigService = require('./main/services/ConfigService');
 const GameService = require('./main/services/GameService');
 const TagService = require('./main/services/TagService');
+const GameSessionService = require('./main/services/GameSessionService');
+const GameMonitorService = require('./main/services/GameMonitorService');
 
 // Import IPC setup
 const { setupIPC } = require('./main/ipc');
+
+// Global service variables
+let gameMonitorService = null;
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -47,14 +52,18 @@ app.whenReady().then(() => {
   
   // Initialize services
   const configService = new ConfigService();
-  const gameService = new GameService(db, configService);
+  const gameSessionService = new GameSessionService(db);
+  gameMonitorService = new GameMonitorService(db, gameSessionService);
+  const gameService = new GameService(db, configService, gameSessionService, gameMonitorService);
   const tagService = new TagService(db);
   
   // Setup IPC handlers with services
   setupIPC({
     gameService,
     tagService,
-    configService
+    configService,
+    gameSessionService,
+    gameMonitorService
   });
   
   // Create window
@@ -64,6 +73,17 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('before-quit', async () => {
+  // Cleanup monitoring service
+  try {
+    if (gameMonitorService) {
+      await gameMonitorService.cleanup();
+    }
+  } catch (error) {
+    console.error('Error during cleanup:', error);
   }
 });
 

@@ -26,8 +26,13 @@ function setupGameHandlers(gameService) {
   });
 
   // Launch game
-  ipcMain.handle('launch-game', (event, gamePath) => {
-    return gameService.launchGame(gamePath);
+  ipcMain.handle('launch-game', (event, gameData) => {
+    return gameService.launchGame(gameData);
+  });
+
+  // Get monitored games
+  ipcMain.handle('get-monitored-games', () => {
+    return gameService.gameMonitorService.getMonitoredGames();
   });
 
   // Get thumbnail path

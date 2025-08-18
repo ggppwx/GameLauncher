@@ -20,6 +20,7 @@ function setupDB() {
       path TEXT,
       type TEXT,
       thumbnail TEXT,
+      process TEXT,
       description TEXT,
       shortDescription TEXT,
       genres TEXT,
@@ -47,26 +48,18 @@ function setupDB() {
       tags TEXT
     )`);
 
-    // Create tags table
-    db.run(`CREATE TABLE IF NOT EXISTS tags (
+    // Create game_sessions table
+    db.run(`CREATE TABLE IF NOT EXISTS game_sessions (
       id TEXT PRIMARY KEY,
-      name TEXT UNIQUE NOT NULL,
-      color TEXT,
-      isDefault BOOLEAN DEFAULT 0
+      game_id TEXT NOT NULL,
+      game_name TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT,
+      game_time INTEGER,
+      FOREIGN KEY (game_id) REFERENCES games (id)
     )`);
 
-    // Insert default tags if they don't exist
-    const defaultTags = [
-      { id: 'backlog', name: 'Backlog', color: '#3B82F6', isDefault: 1 },
-      { id: 'playing', name: 'Playing', color: '#10B981', isDefault: 1 },
-      { id: 'complete', name: 'Complete', color: '#F59E0B', isDefault: 1 },
-      { id: 'abandon', name: 'Abandon', color: '#EF4444', isDefault: 1 }
-    ];
-
-    defaultTags.forEach(tag => {
-      db.run(`INSERT OR IGNORE INTO tags (id, name, color, isDefault) VALUES (?, ?, ?, ?)`,
-        [tag.id, tag.name, tag.color, tag.isDefault]);
-    });
   });
   module.exports.db = db;
 }

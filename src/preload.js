@@ -21,4 +21,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTags: () => ipcRenderer.invoke('get-tags'),
   addTag: (tag) => ipcRenderer.invoke('add-tag', tag),
   addTagsToGame: (gameId, tagNames) => ipcRenderer.invoke('add-tags-to-game', { gameId, tagNames }),
+  // Session-related APIs
+  getGameStats: () => ipcRenderer.invoke('get-game-stats'),
+  getGameSessions: () => ipcRenderer.invoke('get-game-sessions'),
+  getActiveSessions: () => ipcRenderer.invoke('get-active-sessions'),
+  endGameSession: (sessionId) => ipcRenderer.invoke('end-game-session', sessionId),
+  // Monitoring APIs
+  getMonitoredGames: () => ipcRenderer.invoke('get-monitored-games'),
 });

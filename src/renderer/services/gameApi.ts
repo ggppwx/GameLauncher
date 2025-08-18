@@ -30,8 +30,8 @@ export class GameApi {
   }
 
   // Launch a game
-  async launchGame(gamePath: string): Promise<LaunchResult> {
-    return apiClient.invoke<LaunchResult>('launchGame', gamePath);
+  async launchGame(gameData: { gameId: string; gamePath: string }): Promise<LaunchResult> {
+    return apiClient.invoke<LaunchResult>('launchGame', gameData);
   }
 
   // Get thumbnail path

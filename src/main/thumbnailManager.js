@@ -348,9 +348,7 @@ async function getOrDownloadCoverImage(appId) {
 // Enhanced metadata extraction with cover image
 async function getGameMetadata(appId) {
   try {
-    const gameData = await fetchSteamGameData(appId);
-    console.log(`Raw Steam API data for ${appId}:`, JSON.stringify(gameData, null, 2));
-    
+    const gameData = await fetchSteamGameData(appId);    
     const metadata = {
       name: gameData.name,
       description: gameData.detailed_description,

@@ -6,6 +6,7 @@ export interface Game {
   executable?: string | null
   appid?: string | null
   thumbnail?: string | null
+  process?: string | null
   description?: string | null
   shortDescription?: string | null
   genres?: string[] | null
@@ -38,4 +39,30 @@ export interface Tag {
   name: string
   color?: string
   isDefault?: boolean
+}
+
+export interface GameSession {
+  id: string
+  gameId: string
+  startTime: string
+  endTime?: string | null
+  duration?: number | null
+}
+
+export interface GameStats {
+  totalGames: number
+  totalPlaytime: number
+  totalSessions: number
+  averageSessionLength: number
+  mostPlayedGame?: string
+  recentSessions: GameSession[]
+}
+
+export interface MonitoredGame {
+  sessionId: string
+  gameId: string
+  gameName: string
+  processName: string
+  startTime: Date
+  isRunning: boolean
 }

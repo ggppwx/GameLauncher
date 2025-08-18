@@ -93,9 +93,9 @@ export function useGames(): UseGamesReturn {
     try {
       if (game.type === 'steam') {
         const steamUrl = `steam://rungameid/${game.appid}`;
-        await gameApi.launchGame(steamUrl);
+        await gameApi.launchGame({ gameId: game.id, gamePath: steamUrl });
       } else {
-        await gameApi.launchGame(game.path);
+        await gameApi.launchGame({ gameId: game.id, gamePath: game.path });
       }
       
       toast({
