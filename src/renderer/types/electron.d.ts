@@ -1,3 +1,6 @@
+import { Game, Tag, GameSession, GameStats, MonitoredGame } from './game';
+import { ComprehensiveStats, MostPlayedGame, OverallStats } from '../services/statisticsApi';
+
 export interface ElectronAPI {
   launchGame: (gamePath: string) => Promise<{ success: boolean; error?: string }>
   detectSteamGames: () => Promise<Game[]>
@@ -24,6 +27,14 @@ export interface ElectronAPI {
   endGameSession: (sessionId: string) => Promise<{ success: boolean }>
   // Monitoring APIs
   getMonitoredGames: () => Promise<MonitoredGame[]>
+  // Statistics APIs
+  getComprehensiveStats: () => Promise<ComprehensiveStats>
+  getMostPlayedGames7Days: () => Promise<MostPlayedGame[]>
+  getOverallStats: () => Promise<OverallStats>
+  getCurrentMonthPlaytime: () => Promise<number>
+  getMostPlayedGame: () => Promise<MostPlayedGame | null>
+  getRecentSessions: (limit?: number) => Promise<GameSession[]>
+  getCompletedGamesCount: () => Promise<number>
 }
 
 declare global {

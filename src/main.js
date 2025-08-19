@@ -10,6 +10,7 @@ const GameService = require('./main/services/GameService');
 const TagService = require('./main/services/TagService');
 const GameSessionService = require('./main/services/GameSessionService');
 const GameMonitorService = require('./main/services/GameMonitorService');
+const StatisticsService = require('./main/services/StatisticsService');
 
 // Import IPC setup
 const { setupIPC } = require('./main/ipc');
@@ -56,15 +57,10 @@ app.whenReady().then(() => {
   gameMonitorService = new GameMonitorService(db, gameSessionService);
   const gameService = new GameService(db, configService, gameSessionService, gameMonitorService);
   const tagService = new TagService(db);
+  const statisticsService = new StatisticsService(db);
   
   // Setup IPC handlers with services
-  setupIPC({
-    gameService,
-    tagService,
-    configService,
-    gameSessionService,
-    gameMonitorService
-  });
+  setupIPC({ gameService, tagService, configService, statisticsService });
   
   // Create window
   createWindow();

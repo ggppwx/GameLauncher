@@ -65,7 +65,11 @@ follow typical electron app structure
       - a pop up show up and you can input tag 
 
 
-## game statitics 
+## game statistic
+- [X] Implment basic statistic in the statistic tab 
+  - use the game_session table we already have, query the database to get statistic info
+- [X] create a bar chart, list the games played in the last 7 days
+  - sorted by play times 
 
 
 
