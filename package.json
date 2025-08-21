@@ -9,8 +9,10 @@
     "dev:react": "vite",
     "build": "vite build",
     "build:electron": "electron-builder",
+    "package:win": "cross-env ELECTRON_BUILDER_DISABLE_CODE_SIGNING=true npm run build && electron-builder --win zip",
     "preview": "vite preview",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [
     "launcher",
@@ -60,15 +62,26 @@
     "appId": "com.gamelauncher.app",
     "productName": "Game Launcher",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "files": [
       "src/main.js",
+      "src/preload.js",
+      "src/main/**/*",
       "dist/**/*",
       "assets/**/*"
     ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/sqlite3/**"
+    ],
     "win": {
-      "target": "nsis"
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "signingHashAlgorithms": [],
+      "artifactName": "GameLauncher-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,

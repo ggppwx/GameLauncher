@@ -53,6 +53,14 @@ follow typical electron app structure
   - show game thumbnails in game card 
   - the appid is used for lauching the game 
 
+### scan games using steam api 
+- [ ] import games from steam api. 
+  - use the same game table in the database 
+  - include installed games and uninstalled games 
+  - keep current styles/logic unchanged 
+    - for uninstaleed games, make it dimmer 
+
+
 
 ## game orgnizer 
 - [X] make gmae filter work 
@@ -71,6 +79,15 @@ follow typical electron app structure
 - [X] create a bar chart, list the games played in the last 7 days
   - sorted by play times 
 
+
+
+## packaging 
+- [ ] package the electorn app so that I can distributed and install it in other pc
+  - use electron-builder
+  - platform: windows 
+  - 2 different ways to ship the application  
+    - NSIS
+    - zip   
 
 
 
