@@ -66,6 +66,28 @@ class GameSessionService {
                   const endTime = new Date(row.end_time);
                   const gameTime = Math.floor((endTime - startTime) / 1000); // Time in seconds
                   
+                  if (gameTime < 60) {
+                    // delete the session 
+                    this.db.run(
+                      `DELETE FROM game_sessions WHERE session_id = ?`,
+                      [sessionId],
+                      (err) => {
+                        if (err) {
+                          reject(err);
+                        } else {
+                          resolve({ 
+                            sessionId: row.session_id,
+                            startTime: row.start_time,
+                            endTime: row.end_time,
+                            gameTime
+                          });
+                        }
+                      }
+                    );
+                    return;
+                  }
+
+
                   // Update with calculated game time
                   this.db.run(
                     `UPDATE game_sessions SET game_time = ? WHERE session_id = ?`,

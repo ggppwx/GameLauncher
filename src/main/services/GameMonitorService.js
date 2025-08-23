@@ -68,9 +68,13 @@ class GameMonitorService {
     this.isMonitoring = true;
     console.log('Starting game monitoring loop...');
     
-    this.monitoringInterval = setInterval(async () => {
-      await this.checkRunningGames();
-    }, 10000); // Check every 10 seconds
+    // delay 60 seconds before starting the monitoring loop
+    setTimeout(() => {
+      this.checkRunningGames();
+      this.monitoringInterval = setInterval(async () => {
+        await this.checkRunningGames();
+      }, 10000); // Check every 10 seconds
+    }, 60000);
   }
 
   stopMonitoringLoop() {

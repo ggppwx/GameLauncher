@@ -235,14 +235,14 @@ export function Statistics() {
             </motion.div>
 
             {/* Game Monitoring Dashboard */}
-            <motion.div
+            {/* <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
               className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-white/20"
             >
               <MonitoringDashboard />
-            </motion.div>
+            </motion.div> */}
 
             {/* Recent Sessions Section */}
             <motion.div
