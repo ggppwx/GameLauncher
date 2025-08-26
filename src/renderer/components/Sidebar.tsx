@@ -13,6 +13,8 @@ interface SidebarProps {
   onSearchChange: (value: string) => void
   filterType: string
   onFilterChange: (value: string) => void
+  installedOnly?: boolean
+  onInstalledOnlyChange?: (value: boolean) => void
   selectedTags: string[]
   onTagFilterChange: (tagNames: string[]) => void
   games: Game[] // Add games prop for dynamic filtering
@@ -23,6 +25,8 @@ export function Sidebar({
   onSearchChange, 
   filterType, 
   onFilterChange, 
+  installedOnly = false,
+  onInstalledOnlyChange,
   selectedTags, 
   onTagFilterChange,
   games
@@ -63,6 +67,24 @@ export function Sidebar({
         </div>
 
         <div className="space-y-4">
+          {/* Installed toggle - right below Filters */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">Installed</Label>
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                installedOnly
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+              }`}
+              onClick={() => onInstalledOnlyChange && onInstalledOnlyChange(!installedOnly)}
+            >
+              <div className={`w-3 h-3 rounded-full ${installedOnly ? 'bg-blue-500' : 'bg-gray-300'}`} />
+              <span className="text-sm font-medium flex-1">Installed Only</span>
+            </motion.div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="search" className="text-sm font-medium text-gray-700">
               Search Games
@@ -101,6 +123,8 @@ export function Sidebar({
               </SelectContent>
             </Select>
           </div>
+
+          
 
           {/* Tag Filters */}
           <div className="space-y-2">

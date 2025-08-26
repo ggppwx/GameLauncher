@@ -1,4 +1,4 @@
-const { ipcMain, shell } = require('electron');
+const { ipcMain, shell, BrowserWindow, session } = require('electron');
 const path = require('path');
 
 function setupSteamHandlers(configService) {
@@ -85,6 +85,144 @@ function setupSteamHandlers(configService) {
       return result.filePaths[0];
     }
     return null;
+  });
+
+  // Web login to obtain Steam Web API key
+  ipcMain.handle('steam-web-login', async () => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const loginWin = new BrowserWindow({
+          width: 900,
+          height: 700,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            partition: 'persist:steam-login'
+          }
+        });
+
+        let completed = false;
+        let pollInterval = null;
+        let stopTimeout = null;
+
+        const cleanup = () => {
+          if (pollInterval) { try { clearInterval(pollInterval); } catch (_) {} pollInterval = null; }
+          if (stopTimeout) { try { clearTimeout(stopTimeout); } catch (_) {} stopTimeout = null; }
+          try {
+            loginWin.webContents.removeListener('did-finish-load', onNav);
+            loginWin.webContents.removeListener('did-navigate', onNav);
+            loginWin.webContents.removeListener('did-navigate-in-page', onNav);
+          } catch (_) {}
+        };
+
+        const finish = async (result) => {
+          if (completed) return;
+          completed = true;
+          try {
+            if (result && result.key) {
+              const updates = { steamApiKey: result.key };
+              if (result.steamId) updates.steamUserId = result.steamId;
+              if (result.persona) updates.steamPersonaName = result.persona;
+              await configService.updateConfig(updates);
+            }
+          } catch (_) {}
+          cleanup();
+          try { loginWin.close(); } catch (_) {}
+          resolve({ success: !!(result && result.key), ...result });
+        };
+
+        loginWin.on('closed', () => {
+          if (!completed) {
+            cleanup();
+            resolve({ success: false, error: 'Window closed' });
+          }
+        });
+
+        const tryExtract = async () => {
+          try {
+            const result = await loginWin.webContents.executeJavaScript(`(function(){
+              function getText() {
+                try { return document.documentElement.innerText || document.body.innerText || ''; } catch(e) { return ''; }
+              }
+              const text = getText();
+              // Match 32 hex chars after 'Key:' or standalone 32-hex on the page
+              let key = null;
+              let m = text.match(/Key\s*:\s*([0-9A-Fa-f]{32})/);
+              if (m && m[1]) key = m[1];
+              if (!key) {
+                const anyHex = text.match(/\b[0-9A-Fa-f]{32}\b/);
+                if (anyHex) key = anyHex[0];
+              }
+              // Try DOM specific nodes
+              if (!key) {
+                const candidates = Array.from(document.querySelectorAll('p, code, pre, #bodyContents_ex, #mainContents'));
+                for (const el of candidates) {
+                  const t = (el.innerText||'').trim();
+                  const mm = t.match(/Key\s*:\s*([0-9A-Fa-f]{32})/);
+                  if (mm && mm[1]) { key = mm[1]; break; }
+                }
+              }
+              // SteamID64 from globals or profile link
+              let steamId = null; let persona = null;
+              try{steamId = (window.g_steamID || null);}catch(e){}
+              try{persona = (window.g_steamNickname || null);}catch(e){}
+              if (!steamId) {
+                const a = document.querySelector("a[href*='steamcommunity.com/profiles/']");
+                if (a && a.href) {
+                  const mm = a.href.match(/profiles\/(\d{17})/);
+                  if (mm) steamId = mm[1];
+                }
+              }
+              if (!persona) {
+                const og = document.querySelector('meta[property="og:title"]');
+                if (og && og.content) persona = og.content;
+              }
+              return { key, steamId, persona, url: location.href };
+            })()`);
+            if (result && result.key) {
+              await finish(result);
+              return true;
+            }
+          } catch (_) {}
+          return false;
+        };
+
+        const onNav = async () => { await tryExtract(); };
+
+        loginWin.webContents.on('did-finish-load', onNav);
+        loginWin.webContents.on('did-navigate', onNav);
+        loginWin.webContents.on('did-navigate-in-page', onNav);
+
+        // Start at login page that redirects to API key page after login
+        await loginWin.loadURL('https://steamcommunity.com/login/home/?goto=dev%2Fapikey');
+        loginWin.show();
+
+        // Start polling to capture when Steam renders the key, just in case events are missed
+        pollInterval = setInterval(tryExtract, 600);
+        // Safety timeout to avoid hanging window forever
+        stopTimeout = setTimeout(() => {
+          if (!completed) {
+            cleanup();
+            resolve({ success: false, error: 'Timed out waiting for API key' });
+            try { loginWin.close(); } catch (_) {}
+          }
+        }, 60000);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+
+  // Clear saved login (remove key from config and clear cookies)
+  ipcMain.handle('steam-web-logout', async () => {
+    try {
+      await configService.updateConfig({ steamApiKey: null, steamPersonaName: null });
+      const sess = session.fromPartition('persist:steam-login');
+      await sess.clearStorageData({ storages: ['cookies', 'localstorage', 'indexdb', 'serviceworkers'] });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   });
 }
 

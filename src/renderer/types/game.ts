@@ -32,6 +32,8 @@ export interface Game {
   steamGridLogo?: string | null
   steamGridGameId?: string | null
   tags?: string[] | null
+  playtime?: number | null
+  timeLastPlay?: number | null
 }
 
 export interface Tag {

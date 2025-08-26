@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs-extra');
 const https = require('https');
+const zlib = require('zlib');
 const { URL } = require('url');
 
 const localAppData = process.env.LOCALAPPDATA || process.env.HOME;
@@ -21,33 +22,67 @@ function isThumbnailCached(appId) {
 }
 
 // Fetch game metadata from Steam Web API
-function fetchSteamGameData(appId) {
+function fetchSteamGameData(appId, attempt = 1) {
   return new Promise((resolve, reject) => {
-    const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
-    
-    https.get(url, (response) => {
+    const urlObj = new URL(`https://store.steampowered.com/api/appdetails?appids=${appId}&cc=us&l=en`);
+    const options = {
+      headers: {
+        'User-Agent': 'GameLauncher/0.1 (+https://local) ',
+        'Accept': 'application/json,text/plain,*/*',
+        'Accept-Encoding': 'gzip,deflate',
+      },
+    };
+
+    const req = https.get(urlObj, options, (response) => {
+      const status = response.statusCode || 0;
+      let stream = response;
+      const encoding = (response.headers['content-encoding'] || '').toString();
+      if (encoding.includes('gzip') || encoding.includes('deflate')) {
+        const unzip = zlib.createUnzip();
+        stream = response.pipe(unzip);
+      }
+
       let data = '';
-      
-      response.on('data', (chunk) => {
-        data += chunk;
+      stream.on('data', (chunk) => {
+        data += chunk.toString('utf8');
       });
-      
-      response.on('end', () => {
+      stream.on('end', () => {
         try {
-          const jsonData = JSON.parse(data);
-          const gameData = jsonData[appId];
-          
-          if (gameData && gameData.success) {
-            resolve(gameData.data);
-          } else {
-            reject(new Error('Game not found or API request failed'));
+          if (status !== 200) {
+            throw new Error(`HTTP ${status}`);
           }
-        } catch (error) {
-          reject(new Error('Failed to parse Steam API response'));
+          if (!data || data.trim().startsWith('<')) {
+            throw new Error('Non-JSON response');
+          }
+          const json = JSON.parse(data);
+          const entry = json[String(appId)];
+          if (entry && entry.success === true && entry.data) {
+            resolve(entry.data);
+          } else {
+            throw new Error('Game not found or no data field');
+          }
+        } catch (e) {
+          if (attempt < 3) {
+            const delay = 300 * Math.pow(2, attempt - 1);
+            setTimeout(() => {
+              fetchSteamGameData(appId, attempt + 1).then(resolve).catch(reject);
+            }, delay);
+          } else {
+            reject(new Error('Failed to parse Steam API response'));
+          }
         }
       });
-    }).on('error', (err) => {
-      reject(err);
+    });
+
+    req.on('error', (err) => {
+      if (attempt < 3) {
+        const delay = 300 * Math.pow(2, attempt - 1);
+        setTimeout(() => {
+          fetchSteamGameData(appId, attempt + 1).then(resolve).catch(reject);
+        }, delay);
+      } else {
+        reject(err);
+      }
     });
   });
 }

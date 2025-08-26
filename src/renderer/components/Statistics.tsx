@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart3, TrendingUp, Gamepad2, Clock, Calendar, Trophy, Loader2 } from 'lucide-react'
-import { MonitoringDashboard } from './MonitoringDashboard'
+import { BarChart3, TrendingUp, Gamepad2, Clock, Calendar, Trophy, Loader2, X } from 'lucide-react'
+// import { MonitoringDashboard } from './MonitoringDashboard'
 import { GamePlaytimeChart } from './GamePlaytimeChart'
 import { statisticsApi, ComprehensiveStats } from '../services/statisticsApi'
 
@@ -28,6 +28,15 @@ export function Statistics() {
       setError('Failed to load statistics');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteSession = async (id: string | number) => {
+    try {
+      await statisticsApi.deleteSession(id);
+      await loadStatistics();
+    } catch (e) {
+      console.error('Failed to delete session:', e);
     }
   };
 
@@ -265,10 +274,18 @@ export function Statistics() {
                           {statisticsApi.formatDate(session.startTime)}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center space-x-3">
                         <p className="font-medium text-gray-800">
                           {session.gameTime ? statisticsApi.formatPlaytime(session.gameTime) : 'N/A'}
                         </p>
+                        <button
+                          onClick={() => handleDeleteSession(session.id)}
+                          className="p-1.5 rounded hover:bg-red-50 text-red-500 hover:text-red-600 transition-colors"
+                          aria-label="Delete session"
+                          title="Delete session"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   ))

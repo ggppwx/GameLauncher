@@ -29,6 +29,11 @@ export class GameApi {
     return apiClient.invoke<Game[]>('detectSteamGames');
   }
 
+  // Import Steam games (Steam Web API)
+  async importSteamGames(): Promise<Game[]> {
+    return apiClient.invoke<Game[]>('importSteamGames');
+  }
+
   // Launch a game
   async launchGame(gameData: { gameId: string; gamePath: string }): Promise<LaunchResult> {
     return apiClient.invoke<LaunchResult>('launchGame', gameData);
@@ -53,7 +58,7 @@ export class GameApi {
   onScanProgress(callback: (progress: ScanProgress) => void): void {
     apiClient.onScanProgress((event, data) => callback(data));
   }
-
+  
   // Remove scan progress listener
   removeScanProgressListener(): void {
     apiClient.removeScanProgressListener();

@@ -70,6 +70,16 @@ function setupStatisticsHandlers(statisticsService) {
       throw error;
     }
   });
+
+  // Delete a session by id
+  ipcMain.handle('delete-session', async (event, id) => {
+    try {
+      return await statisticsService.deleteSessionById(id);
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      throw error;
+    }
+  });
 }
 
 module.exports = { setupStatisticsHandlers };

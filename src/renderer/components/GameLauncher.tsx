@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { GameGrid } from './GameGrid'
 import { Sidebar } from './Sidebar'
 import { AddGameDialog } from './AddGameDialog'
@@ -7,11 +7,12 @@ import { LoadingOverlay } from './LoadingOverlay'
 import { Game } from '../types/game'
 import { useGames } from '../hooks/useGames'
 import { useTags } from '../hooks/useTags'
-import { Settings } from 'lucide-react'
+import { Settings, Loader2 } from 'lucide-react'
 
 export function GameLauncher() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [configDialogOpen, setConfigDialogOpen] = useState(false)
+  const [sortBy, setSortBy] = useState<'name' | 'lastPlay' | 'timePlayed'>('lastPlay')
   
   // Use custom hooks for state management
   const {
@@ -23,10 +24,13 @@ export function GameLauncher() {
     searchTerm,
     filterType,
     selectedTags,
+    installedOnly,
     setSearchTerm,
     setFilterType,
     setSelectedTags,
+    setInstalledOnly,
     scanSteamGames,
+    importSteamGames,
     launchGame,
     removeGame,
     refreshGames,
@@ -56,6 +60,18 @@ export function GameLauncher() {
     refreshGames() // Reload games to get updated tag information
   }
 
+  const sortedGames = useMemo(() => {
+    const arr = [...filteredGames]
+    if (sortBy === 'name') {
+      arr.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    } else if (sortBy === 'lastPlay') {
+      arr.sort((a, b) => (b.timeLastPlay || 0) - (a.timeLastPlay || 0))
+    } else if (sortBy === 'timePlayed') {
+      arr.sort((a, b) => (b.playtime || 0) - (a.playtime || 0))
+    }
+    return arr
+  }, [filteredGames, sortBy])
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Library Header with Actions */}
@@ -72,16 +88,27 @@ export function GameLauncher() {
             </h1>
           </div>
           <div className="flex items-center space-x-3">
-            <select className="dropdown-steam">
-              <option>SORT BY Release Date</option>
-              <option>Name</option>
-              <option>Playtime</option>
+            <select
+              className="dropdown-steam"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'lastPlay' | 'timePlayed')}
+              title="Sort games"
+            >
+              <option value="name">Name</option>
+              <option value="lastPlay">Last Play</option>
+              <option value="timePlayed">Time Played</option>
             </select>
-            <button
+            {/* <button
               onClick={scanSteamGames}
               className="btn-steam px-4 py-2 text-sm"
             >
               Scan Steam
+            </button> */}
+            <button
+              onClick={importSteamGames}
+              className="btn-steam px-4 py-2 text-sm"
+            >
+              Import Steam
             </button>
             <button
               onClick={() => setDialogOpen(true)}
@@ -96,6 +123,15 @@ export function GameLauncher() {
             >
               <Settings className="w-4 h-4" />
             </button>
+
+            {scanProgress && (
+              <div className="ml-2 flex items-center text-xs text-gray-600 bg-white/70 backdrop-blur px-2 py-1 rounded">
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                <span>
+                  Importing {scanProgress.current}/{scanProgress.total} ({scanProgress.gamesFound} added)
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -108,6 +144,8 @@ export function GameLauncher() {
             onSearchChange={setSearchTerm}
             filterType={filterType}
             onFilterChange={setFilterType}
+            installedOnly={installedOnly}
+            onInstalledOnlyChange={setInstalledOnly}
             selectedTags={selectedTags}
             onTagFilterChange={setSelectedTags}
             games={games}
@@ -118,7 +156,8 @@ export function GameLauncher() {
         <div className="flex-1 overflow-auto">
           <div className="p-6">
             <GameGrid 
-              games={filteredGames}
+              games={sortedGames}
+              sortBy={sortBy}
               onLaunchGame={launchGame}
               onRemoveGame={removeGame}
               onTagsUpdated={handleTagsUpdated}

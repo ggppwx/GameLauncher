@@ -13,11 +13,14 @@ export interface UseGamesReturn {
   searchTerm: string;
   filterType: string;
   selectedTags: string[];
+  installedOnly: boolean;
   setSearchTerm: (term: string) => void;
   setFilterType: (type: string) => void;
   setSelectedTags: (tags: string[]) => void;
+  setInstalledOnly: (value: boolean) => void;
   loadGames: () => Promise<void>;
   scanSteamGames: () => Promise<void>;
+  importSteamGames: () => Promise<void>;
   launchGame: (game: Game) => Promise<void>;
   removeGame: (gameId: string) => Promise<void>;
   refreshGames: () => Promise<void>;
@@ -32,6 +35,7 @@ export function useGames(): UseGamesReturn {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [installedOnly, setInstalledOnly] = useState<boolean>(false);
   
   const { toast } = useToast();
 
@@ -83,6 +87,58 @@ export function useGames(): UseGamesReturn {
       });
     } finally {
       setScanning(false);
+      setScanProgress(null);
+      gameApi.removeScanProgressListener();
+    }
+  }, [loadGames, toast]);
+
+  // Import Steam games (from account) - non-blocking
+  const importSteamGames = useCallback(async () => {
+    try {
+      // Do not set scanning overlay; remain interactive.
+      setScanProgress(null);
+      const loadingToast = toast({
+        title: "Importing Steam Library",
+        description: "Starting import...",
+        // Keep the toast visible during long-running import
+        // Radix Toast auto-closes by default; extend duration generously
+        duration: 1000000,
+      });
+      let lastRefresh = 0;
+      gameApi.onScanProgress(async (progress: ScanProgress) => {
+        setScanProgress(progress);
+        const now = Date.now();
+        if (now - lastRefresh > 1000) { // throttle refresh to ~1s
+          lastRefresh = now;
+          try { await loadGames(); } catch (_) {}
+        }
+        try {
+          loadingToast.update({
+            id: loadingToast.id,
+            title: "Importing Steam Library",
+            description: `Processed ${progress.current}/${progress.total} • ${progress.gamesFound} added`,
+            duration: 1000000,
+          } as any);
+        } catch (_) {}
+      });
+      const newGames = await gameApi.importSteamGames();
+      await loadGames();
+      try {
+        loadingToast.update({
+          id: loadingToast.id,
+          title: "Import Complete",
+          description: `Imported ${newGames.length} games from Steam account`,
+          duration: 8000,
+        } as any);
+      } catch (_) {}
+    } catch (error) {
+      console.error('Error importing Steam games:', error);
+      toast({
+        title: "Import Failed",
+        description: error instanceof Error ? error.message : "Failed to import Steam games",
+        variant: "destructive"
+      });
+    } finally {
       setScanProgress(null);
       gameApi.removeScanProgressListener();
     }
@@ -146,9 +202,12 @@ export function useGames(): UseGamesReturn {
     filtered = filterGamesBySearch(filtered, searchTerm);
     filtered = filterGamesByType(filtered, filterType);
     filtered = filterGamesByTags(filtered, selectedTags);
+    if (installedOnly) {
+      filtered = filtered.filter(g => Boolean(g.process || g.path));
+    }
 
     setFilteredGames(filtered);
-  }, [games, searchTerm, filterType, selectedTags]);
+  }, [games, searchTerm, filterType, selectedTags, installedOnly]);
 
   // Load games on mount
   useEffect(() => {
@@ -164,11 +223,14 @@ export function useGames(): UseGamesReturn {
     searchTerm,
     filterType,
     selectedTags,
+    installedOnly,
     setSearchTerm,
     setFilterType,
     setSelectedTags,
+    setInstalledOnly,
     loadGames,
     scanSteamGames,
+    importSteamGames,
     launchGame,
     removeGame,
     refreshGames,

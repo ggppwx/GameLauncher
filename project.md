@@ -78,16 +78,26 @@ follow typical electron app structure
   - use the game_session table we already have, query the database to get statistic info
 - [X] create a bar chart, list the games played in the last 7 days
   - sorted by play times 
+- [ ] 
+
+### game notes and tracking 
+
 
 
 
 ## packaging 
-- [ ] package the electorn app so that I can distributed and install it in other pc
+- [X] package the electorn app so that I can distributed and install it in other pc
   - use electron-builder
   - platform: windows 
   - 2 different ways to ship the application  
     - NSIS
     - zip   
+
+
+
+
+## plugins support 
+- build a way allow others write plugins 
 
 
 

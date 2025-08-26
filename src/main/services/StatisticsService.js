@@ -193,6 +193,23 @@ class StatisticsService {
       throw error;
     }
   }
+
+  // Delete a session by its database id
+  async deleteSessionById(id) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        `DELETE FROM game_sessions WHERE id = ?`,
+        [id],
+        function (err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ success: true });
+          }
+        }
+      );
+    });
+  }
 }
 
 module.exports = StatisticsService;

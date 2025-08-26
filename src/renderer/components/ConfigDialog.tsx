@@ -13,6 +13,8 @@ interface ConfigDialogProps {
 
 export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
   const [steamPath, setSteamPath] = useState('')
+  const [steamApiKey, setSteamApiKey] = useState('')
+  const [steamUserId, setSteamUserId] = useState('')
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
@@ -24,13 +26,15 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
 
   const loadSteamPath = async () => {
     try {
-      const path = await window.electronAPI.getSteamPath()
-      setSteamPath(path || '')
+      const cfg = await window.electronAPI.getConfig()
+      setSteamPath(cfg?.steamPath || '')
+      setSteamApiKey(cfg?.steamApiKey || '')
+      setSteamUserId(cfg?.steamUserId || '')
     } catch (error) {
-      console.error('Error loading Steam path:', error)
+      console.error('Error loading configuration:', error)
       toast({
         title: "Error",
-        description: "Failed to load Steam path configuration",
+        description: "Failed to load configuration",
         variant: "destructive"
       })
     }
@@ -55,21 +59,58 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
   const handleSave = async () => {
     setLoading(true)
     try {
-      await window.electronAPI.setSteamPath(steamPath)
+      await window.electronAPI.setConfig({
+        steamPath,
+        steamApiKey,
+        steamUserId,
+      })
       toast({
         title: "Success",
-        description: "Steam path configuration saved successfully"
+        description: "Configuration saved successfully"
       })
       onOpenChange(false)
     } catch (error) {
-      console.error('Error saving Steam path:', error)
+      console.error('Error saving configuration:', error)
       toast({
         title: "Error",
-        description: "Failed to save Steam path configuration",
+        description: "Failed to save configuration",
         variant: "destructive"
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleWebLogin = async () => {
+    try {
+      const res = await window.electronAPI.steamWebLogin()
+      if (res?.success) {
+        setSteamApiKey(res.key || '')
+        if (res.steamId) setSteamUserId(res.steamId)
+        // Refresh full config so persona is picked up if present
+        try {
+          const cfg = await window.electronAPI.getConfig()
+          setSteamApiKey(cfg?.steamApiKey || res.key || '')
+          setSteamUserId(cfg?.steamUserId || res.steamId || '')
+        } catch (_) {}
+        toast({ title: 'Login successful', description: res.persona ? `Hello, ${res.persona}` : 'Steam Web API key saved' })
+      } else {
+        toast({ title: 'Login cancelled', description: 'No changes made' })
+      }
+    } catch (error) {
+      toast({ title: 'Login failed', description: 'Unable to complete Steam login', variant: 'destructive' })
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      const res = await window.electronAPI.steamWebLogout()
+      if (res.success) {
+        setSteamApiKey('')
+        toast({ title: 'Logged out', description: 'Cleared saved Steam Web API key' })
+      }
+    } catch (error) {
+      toast({ title: 'Logout failed', description: 'Unable to clear Steam login', variant: 'destructive' })
     }
   }
 
@@ -109,6 +150,47 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
             <p className="text-sm text-gray-500">
               Select the folder where Steam is installed. This is used to detect and scan your Steam games.
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Steam Account</Label>
+            <div className="space-y-2">
+              <Input
+                value={steamApiKey}
+                onChange={(e) => setSteamApiKey(e.target.value)}
+                placeholder="Steam Web API Key"
+              />
+              <Input
+                value={steamUserId}
+                onChange={(e) => setSteamUserId(e.target.value)}
+                placeholder="SteamID64 (e.g., 7656119XXXXXXXXXX)"
+              />
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={() => window.electronAPI.openExternal('https://steamcommunity.com/dev/apikey')}
+                >
+                  Get API Key
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={handleWebLogin}
+                >
+                  Web Login
+                </Button>
+                {steamApiKey && (
+                  <Button
+                    variant="destructive"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </Button>
+                )}
+                <p className="text-xs text-gray-500">
+                  Provide your Steam Web API key and SteamID64 to import your library.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">

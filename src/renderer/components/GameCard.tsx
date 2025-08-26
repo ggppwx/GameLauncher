@@ -1,24 +1,24 @@
 import { motion } from 'framer-motion'
-import { Card, CardContent, CardFooter } from './ui/card'
-import { Button } from './ui/button'
 import { Badge } from './ui/badge'
-import { Game, Tag } from '../types/game'
-import { Gamepad2, Play, Monitor, X, Tag as TagIcon } from 'lucide-react'
+import { Game } from '../types/game'
+import { Play, X, Tag as TagIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { TagDialog } from './TagDialog'
 import { useTags } from '../hooks/useTags'
 import { gameApi } from '../services/gameApi'
-import { getGameDisplayName, getGameTypeDisplayName, getGameThumbnailUrl } from '../utils/gameUtils'
+import { getGameDisplayName, getGameTypeDisplayName } from '../utils/gameUtils'
 
 interface GameCardProps {
   game: Game
   onLaunch: (game: Game) => void
   onRemove: (gameId: string) => void
   onTagsUpdated: () => void
+  sortBy?: 'name' | 'lastPlay' | 'timePlayed'
 }
 
-export function GameCard({ game, onLaunch, onRemove, onTagsUpdated }: GameCardProps) {
+export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: GameCardProps) {
   const isSteam = game.type === 'steam'
+  const isInstalled = Boolean(game.process || game.path)
   const [coverPath, setCoverPath] = useState<string | null>(null)
   const [imageError, setImageError] = useState(false)
   const [showTagDialog, setShowTagDialog] = useState(false)
@@ -56,6 +56,22 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated }: GameCardPr
   const displayName = getGameDisplayName(game);
   const typeDisplayName = getGameTypeDisplayName(game.type);
 
+  const getFooterText = () => {
+    if (sortBy === 'name') {
+      return displayName
+    }
+    if (sortBy === 'lastPlay' && game.timeLastPlay) {
+      const d = new Date(game.timeLastPlay * 1000)
+      return `Last played: ${d.toLocaleString()}`
+    }
+    if (sortBy === 'timePlayed' && typeof game.playtime === 'number') {
+      const hours = Math.floor(game.playtime / 60)
+      const minutes = game.playtime % 60
+      return `Playtime: ${hours}h ${minutes}m`
+    }
+    return null
+  }
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY })
@@ -82,23 +98,27 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated }: GameCardPr
     onTagsUpdated()
   }
 
+  const footerText = getFooterText()
+
   return (
     <>
       <motion.div
-        whileHover={{ 
-          y: -4,
-          transition: { duration: 0.2 }
-        }}
+        whileHover={{ y: -4, transition: { duration: 0.2 } }}
         whileTap={{ scale: 0.98 }}
-        className="game-card-steam relative overflow-hidden cursor-pointer"
-        style={{ 
-          backgroundImage: displayImage && !imageError ? `url(local-file://${displayImage.replace(/\\/g, '/')})` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
+        className="cursor-pointer rounded-md overflow-hidden bg-black/60"
+        style={{ willChange: 'transform' }}
         onContextMenu={handleContextMenu}
       >
+        <div
+          className={`game-card-steam relative overflow-hidden ${!isInstalled ? 'opacity-60' : ''}`}
+          style={{ 
+            backgroundImage: displayImage && !imageError ? `url(local-file://${displayImage.replace(/\\/g, '/')})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            filter: !isInstalled ? 'grayscale(100%)' : undefined
+          }}
+        >
         {/* Background overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
         
@@ -180,6 +200,12 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated }: GameCardPr
               </button>
             </div>
           </div>
+        </div>
+
+        </div>
+        {/* Footer below cover without overlap (always rendered) */}
+        <div className="w-full bg-gray-800/80 text-white text-[10px] px-3 py-2 min-h-[28px] -mt-px">
+          {footerText || ''}
         </div>
       </motion.div>
 

@@ -5,6 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   launchGame: (gamePath) => ipcRenderer.invoke('launch-game', gamePath),
   detectSteamGames: () => ipcRenderer.invoke('detect-steam-games'),
+  importSteamGames: () => ipcRenderer.invoke('import-steam-games'),
   selectGameFolder: () => ipcRenderer.invoke('select-game-folder'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getConfig: () => ipcRenderer.invoke('get-config'),
@@ -16,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getMostPlayedGame: () => ipcRenderer.invoke('get-most-played-game'),
   getRecentSessions: (limit) => ipcRenderer.invoke('get-recent-sessions', limit),
   getCompletedGamesCount: () => ipcRenderer.invoke('get-completed-games-count'),
+  deleteSession: (id) => ipcRenderer.invoke('delete-session', id),
   setConfig: (config) => ipcRenderer.invoke('set-config', config),
   getSteamPath: () => ipcRenderer.invoke('get-steam-path'),
   setSteamPath: (steamPath) => ipcRenderer.invoke('set-steam-path', steamPath),

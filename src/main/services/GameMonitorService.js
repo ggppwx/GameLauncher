@@ -5,30 +5,61 @@ class GameMonitorService {
   constructor(db, gameSessionService) {
     this.db = db;
     this.gameSessionService = gameSessionService;
-    this.monitoredGames = new Map(); // sessionId -> { gameId, processName, startTime }
+    this.monitoredGames = new Map(); // gameId -> { gameId, processName, startTime, sessionId }
     this.monitoringInterval = null;
     this.isMonitoring = false;
   }
 
   async startMonitoring(gameId, processName) {
     try {
+      // Start monitoring if not already running
+      if (this.isMonitoring) {
+        console.log("Monitoring already running, skipping startMonitoring");
+      }
+
       console.log(`Starting monitoring for game ${gameId} with process: ${processName}`);
+
+      // Enforce only one monitored game at a time
+      if (this.monitoredGames.size > 0 && !this.monitoredGames.has(gameId)) {
+        for (const [existingGameId] of this.monitoredGames.entries()) {
+          try {
+            await this.stopMonitoring(existingGameId);
+          } catch (e) {
+            console.error(`Failed to stop existing monitored game ${existingGameId}:`, e);
+          }
+        }
+      }
+
+      // If this game is already monitored, return the existing session
+      const existing = this.monitoredGames.get(gameId);
+      if (existing) {
+        console.log(`Game ${gameId} is already being monitored; reusing session ${existing.sessionId}`);
+        this.startMonitoringLoop();
+        return existing.sessionId;
+      }
+
       
       // Start a new game session
       const sessionId = await this.gameSessionService.startGameSession(gameId);
       
       // Add to monitored games
-      this.monitoredGames.set(sessionId, {
+      this.monitoredGames.set(gameId, {
         gameId,
         processName,
         startTime: new Date(),
         sessionId
       });
+
+
+      // this.monitoredGames.set(sessionId, {
+      //   gameId,
+      //   processName,
+      //   startTime: new Date(),
+      //   sessionId
+      // });
       
-      // Start monitoring if not already running
-      if (!this.isMonitoring) {
-        this.startMonitoringLoop();
-      }
+      this.startMonitoringLoop();
+
       
       return sessionId;
     } catch (error) {
@@ -37,17 +68,17 @@ class GameMonitorService {
     }
   }
 
-  async stopMonitoring(sessionId) {
+  async stopMonitoring(gameId) {
     try {
-      console.log(`Stopping monitoring for session: ${sessionId}`);
+      console.log(`Stopping monitoring for game: ${gameId}`);
       
-      const monitoredGame = this.monitoredGames.get(sessionId);
+      const monitoredGame = this.monitoredGames.get(gameId);
       if (monitoredGame) {
         // End the game session
-        await this.gameSessionService.endGameSession(sessionId);
+        await this.gameSessionService.endGameSession(monitoredGame.sessionId);
         
         // Remove from monitored games
-        this.monitoredGames.delete(sessionId);
+        this.monitoredGames.delete(gameId);
         
         console.log(`Stopped monitoring for game ${monitoredGame.gameId}`);
       }
@@ -87,13 +118,13 @@ class GameMonitorService {
   }
 
   async checkRunningGames() {
-    for (const [sessionId, monitoredGame] of this.monitoredGames.entries()) {
+    for (const [gameId, monitoredGame] of this.monitoredGames.entries()) {
       try {
         const isRunning = await this.isProcessRunning(monitoredGame.processName);
         
         if (!isRunning) {
-          console.log(`Process ${monitoredGame.processName} is no longer running, ending session ${sessionId}`);
-          await this.stopMonitoring(sessionId);
+          console.log(`Process ${monitoredGame.processName} is no longer running, stopping monitoring for game ${gameId}`);
+          await this.stopMonitoring(gameId);
         }
       } catch (error) {
         console.error(`Error checking process ${monitoredGame.processName}:`, error);
@@ -138,7 +169,7 @@ class GameMonitorService {
   async getMonitoredGames() {
     const monitoredGamesList = [];
     
-    for (const [sessionId, monitoredGame] of this.monitoredGames.entries()) {
+    for (const [gameId, monitoredGame] of this.monitoredGames.entries()) {
       try {
         // Get game info from database
         const game = await this.getGameById(monitoredGame.gameId);
@@ -175,11 +206,11 @@ class GameMonitorService {
     this.stopMonitoringLoop();
     
     // End all active sessions
-    for (const [sessionId, monitoredGame] of this.monitoredGames.entries()) {
+    for (const [gameId, monitoredGame] of this.monitoredGames.entries()) {
       try {
-        await this.gameSessionService.endGameSession(sessionId);
+        await this.gameSessionService.endGameSession(monitoredGame.sessionId);
       } catch (error) {
-        console.error(`Error ending session ${sessionId} during cleanup:`, error);
+        console.error(`Error ending session ${monitoredGame.sessionId} during cleanup:`, error);
       }
     }
     

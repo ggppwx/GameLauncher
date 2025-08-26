@@ -45,8 +45,22 @@ function setupDB() {
       steamGridHero TEXT,
       steamGridLogo TEXT,
       steamGridGameId TEXT,
-      tags TEXT
+      tags TEXT,
+      playtime INTEGER,
+      timeLastPlay INTEGER
     )`);
+
+    // Schema migrations: add columns if they don't exist
+    db.all(`PRAGMA table_info(games)`, (err, rows) => {
+      if (err) return;
+      const cols = new Set(rows.map(r => r.name));
+      if (!cols.has('playtime')) {
+        db.run(`ALTER TABLE games ADD COLUMN playtime INTEGER`);
+      }
+      if (!cols.has('timeLastPlay')) {
+        db.run(`ALTER TABLE games ADD COLUMN timeLastPlay INTEGER`);
+      }
+    });
 
     // Create game_sessions table
     db.run(`CREATE TABLE IF NOT EXISTS game_sessions (

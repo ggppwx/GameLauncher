@@ -1,16 +1,17 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { GameCard } from './GameCard'
 import { Game } from '../types/game'
 import { Gamepad2 } from 'lucide-react'
 
 interface GameGridProps {
   games: Game[]
+  sortBy?: 'name' | 'lastPlay' | 'timePlayed'
   onLaunchGame: (game: Game) => void
   onRemoveGame: (gameId: string) => void
   onTagsUpdated: () => void
 }
 
-export function GameGrid({ games, onLaunchGame, onRemoveGame, onTagsUpdated }: GameGridProps) {
+export function GameGrid({ games, sortBy, onLaunchGame, onRemoveGame, onTagsUpdated }: GameGridProps) {
   if (games.length === 0) {
     return (
       <motion.div
@@ -57,12 +58,13 @@ export function GameGrid({ games, onLaunchGame, onRemoveGame, onTagsUpdated }: G
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]"
       >
         {games.map((game) => (
           <div key={game.id}>
             <GameCard
               game={game}
+              sortBy={sortBy}
               onLaunch={onLaunchGame}
               onRemove={onRemoveGame}
               onTagsUpdated={onTagsUpdated}

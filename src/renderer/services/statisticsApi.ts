@@ -48,6 +48,11 @@ export class StatisticsApi {
     return apiClient.invoke<ComprehensiveStats>('getComprehensiveStats');
   }
 
+  // Delete a session by database id
+  async deleteSession(id: string | number): Promise<{ success: boolean }> {
+    return apiClient.invoke<{ success: boolean }>('deleteSession', id);
+  }
+
   // Get most played games in last 7 days
   async getMostPlayedGames7Days(): Promise<MostPlayedGame[]> {
     return apiClient.invoke<MostPlayedGame[]>('getMostPlayedGames7Days');
