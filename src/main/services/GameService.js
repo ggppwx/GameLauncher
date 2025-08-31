@@ -302,54 +302,32 @@ class GameService {
     }
   }
 
+
+  async refreshSteamGames() {
+    try {
+      const appInfos = await this.getAppInfosFromSteam();
+      for (const appInfo of appInfos) {
+        // upsert the partial infor to db
+        await new Promise((resolve, reject) => {
+          this.db.run(
+            'INSERT INTO games (id, appid, name, type, playtime, timeLastPlay) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET appid=excluded.appid, name=excluded.name, type=excluded.type, playtime=excluded.playtime, timeLastPlay=excluded.timeLastPlay',
+            [appInfo.id, appInfo.appid, appInfo.name, appInfo.type, appInfo.playtime, appInfo.timeLastPlay],
+            function (err) { if (err) reject(err); else resolve(); }
+          );
+        });
+        
+      }
+    } catch (error) {
+      console.error('Error refreshing Steam games:', error);
+      throw error;
+    }
+  }
+
   async importSteamGames(progressCallback) {
     try {
-      const config = await this.configService.getConfig();
-      const apiKey = config.steamApiKey;
-      const steamId = config.steamUserId;
-
-      if (!apiKey || !steamId) {
-        throw new Error('Steam API key or SteamID not configured');
-      }
-
-      const params = new URLSearchParams({
-        key: apiKey,
-        steamid: steamId,
-        include_appinfo: '1',
-        include_played_free_games: '1',
-        format: 'json'
-      });
-
-      const url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?${params.toString()}`;
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Steam API error: ${response.status}`);
-      }
-      const data = await response.json();
-      // console.log('===>Steam API response (full dump):', JSON.stringify(data, null, 2));
-      const gamesList = data?.response?.games || [];
-
-      const total = gamesList.length;
-      const results = [];
-
-      for (let i = 0; i < gamesList.length; i++) {
-        const g = gamesList[i];
-        console.log('===>Steam API game:', g);
-
-        const appId = String(g.appid);
-        const name = g.name || `App ${appId}`;
-
-        const appInfo = {
-          id: `steam-${appId}`,
-          appid: appId,
-          name,
-          path: null,
-          type: 'steam',
-          playtime: typeof g.playtime_forever === 'number' ? g.playtime_forever : null,
-          timeLastPlay: typeof g.rtime_last_played === 'number' ? g.rtime_last_played : null
-        };
-
+      const appInfos = await this.getAppInfosFromSteam();
+      let results = [];
+      for (let appInfo of appInfos) {
         // Try to enrich metadata and images
         let thumbnailPath = null;
         let coverPath = null;
@@ -460,7 +438,7 @@ class GameService {
         }
 
         // delay 1s
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       // Post-process: update process and path for installed games using manifests
@@ -603,6 +581,66 @@ class GameService {
       return null;
     }
   }
+
+   async getAppInfosFromSteam() {
+    try {
+      const config = await this.configService.getConfig();
+      const apiKey = config.steamApiKey;
+      const steamId = config.steamUserId;
+      let appInfos = [];
+
+      if (!apiKey || !steamId) {
+        throw new Error('Steam API key or SteamID not configured');
+      }
+
+      const params = new URLSearchParams({
+        key: apiKey,
+        steamid: steamId,
+        include_appinfo: '1',
+        include_played_free_games: '1',
+        format: 'json'
+      });
+
+      const url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?${params.toString()}`;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Steam API error: ${response.status}`);
+      }
+      const data = await response.json();
+      // console.log('===>Steam API response (full dump):', JSON.stringify(data, null, 2));
+      const gamesList = data?.response?.games || [];
+
+      const total = gamesList.length;
+      const results = [];
+
+      for (let i = 0; i < gamesList.length; i++) {
+        const g = gamesList[i];
+        console.log('===>Steam API game:', g);
+
+        const appId = String(g.appid);
+        const name = g.name || `App ${appId}`;
+
+        const appInfo = {
+          id: `steam-${appId}`,
+          appid: appId,
+          name: name,
+          path: null,
+          type: 'steam',
+          playtime: typeof g.playtime_forever === 'number' ? g.playtime_forever : null,
+          timeLastPlay: typeof g.rtime_last_played === 'number' ? g.rtime_last_played : null
+        };
+        appInfos.push(appInfo);
+      }
+
+      return appInfos;
+      
+    } catch (error) {
+      console.error('Error getting app infos from Steam:', error);
+      return [];
+    }
+   }
+
 }
 
 module.exports = GameService;

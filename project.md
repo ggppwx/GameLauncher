@@ -54,7 +54,7 @@ follow typical electron app structure
   - the appid is used for lauching the game 
 
 ### scan games using steam api 
-- [ ] import games from steam api. 
+- [X] import games from steam api. 
   - use the same game table in the database 
   - include installed games and uninstalled games 
   - keep current styles/logic unchanged 
@@ -78,7 +78,7 @@ follow typical electron app structure
   - use the game_session table we already have, query the database to get statistic info
 - [X] create a bar chart, list the games played in the last 7 days
   - sorted by play times 
-- [ ] 
+- [ ] calendar view on recent game sessions 
 
 ### game notes and tracking 
 

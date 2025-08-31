@@ -194,6 +194,63 @@ class StatisticsService {
     }
   }
 
+  // Get per-day, per-game playtime breakdown for a given month
+  async getMonthPlaytimeBreakdown(year, month /* 1-12 */) {
+    return new Promise((resolve, reject) => {
+      try {
+        const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+        const end = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+
+        const startISO = start.toISOString();
+        const endISO = end.toISOString();
+
+        // Aggregate by start date (UTC) within the month
+        this.db.all(
+          `SELECT 
+             DATE(start_time) as day,
+             game_id AS gameId,
+             game_name AS gameName,
+             SUM(game_time) AS seconds
+           FROM game_sessions
+           WHERE start_time >= ? AND start_time < ? AND end_time IS NOT NULL AND game_time IS NOT NULL
+           GROUP BY day, game_id, game_name
+           ORDER BY day ASC, seconds DESC`,
+          [startISO, endISO],
+          (err, rows) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+
+            // Build map day -> games[] and compute totals
+            const dayMap = new Map();
+            for (const row of rows || []) {
+              const dayKey = row.day; // YYYY-MM-DD
+              if (!dayMap.has(dayKey)) dayMap.set(dayKey, []);
+              dayMap.get(dayKey).push({ gameId: row.gameId, gameName: row.gameName, seconds: row.seconds || 0 });
+            }
+
+            const days = [];
+            // Iterate all days in the month to include empty days
+            for (let d = new Date(start); d < end; d.setUTCDate(d.getUTCDate() + 1)) {
+              const yyyy = d.getUTCFullYear();
+              const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+              const dd = String(d.getUTCDate()).padStart(2, '0');
+              const dateStr = `${yyyy}-${mm}-${dd}`;
+              const games = dayMap.get(dateStr) || [];
+              const total = games.reduce((sum, g) => sum + (g.seconds || 0), 0);
+              days.push({ date: dateStr, total, games });
+            }
+
+            resolve({ year, month, days });
+          }
+        );
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
   // Delete a session by its database id
   async deleteSessionById(id) {
     return new Promise((resolve, reject) => {

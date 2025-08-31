@@ -83,6 +83,11 @@ export class StatisticsApi {
     return apiClient.invoke<number>('getCompletedGamesCount');
   }
 
+  // Get per-day, per-game breakdown for a month
+  async getMonthPlaytimeBreakdown(year: number, month: number): Promise<{ year: number; month: number; days: { date: string; total: number; games: { gameId: string; gameName: string; seconds: number }[] }[] }>{
+    return apiClient.invoke('getMonthPlaytimeBreakdown', year, month);
+  }
+
   // Format playtime for display
   formatPlaytime(seconds: number): string {
     if (!seconds) return '0h 0m';

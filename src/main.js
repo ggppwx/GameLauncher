@@ -63,6 +63,9 @@ app.whenReady().then(() => {
   // Setup IPC handlers with services
   setupIPC({ gameService, tagService, configService, statisticsService });
   
+  // Refresh Steam playtime and last play on startup (non-blocking)
+  gameService.refreshSteamGames().catch(err => console.error('Startup Steam refresh failed:', err));
+
   // Create window
   createWindow();
 });

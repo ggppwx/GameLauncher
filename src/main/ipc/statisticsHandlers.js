@@ -71,6 +71,16 @@ function setupStatisticsHandlers(statisticsService) {
     }
   });
 
+  // Get month playtime breakdown (per-day, per-game)
+  ipcMain.handle('get-month-playtime-breakdown', async (event, year, month) => {
+    try {
+      return await statisticsService.getMonthPlaytimeBreakdown(year, month);
+    } catch (error) {
+      console.error('Error getting month playtime breakdown:', error);
+      throw error;
+    }
+  });
+
   // Delete a session by id
   ipcMain.handle('delete-session', async (event, id) => {
     try {

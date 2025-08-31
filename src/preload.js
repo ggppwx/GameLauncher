@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRecentSessions: (limit) => ipcRenderer.invoke('get-recent-sessions', limit),
   getCompletedGamesCount: () => ipcRenderer.invoke('get-completed-games-count'),
   deleteSession: (id) => ipcRenderer.invoke('delete-session', id),
+  getMonthPlaytimeBreakdown: (year, month) => ipcRenderer.invoke('get-month-playtime-breakdown', year, month),
   setConfig: (config) => ipcRenderer.invoke('set-config', config),
   getSteamPath: () => ipcRenderer.invoke('get-steam-path'),
   setSteamPath: (steamPath) => ipcRenderer.invoke('set-steam-path', steamPath),
