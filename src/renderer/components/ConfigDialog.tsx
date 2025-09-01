@@ -16,6 +16,7 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
   const [steamApiKey, setSteamApiKey] = useState('')
   const [steamUserId, setSteamUserId] = useState('')
   const [loading, setLoading] = useState(false)
+  const [gameTimerMinutes, setGameTimerMinutes] = useState<number>(0)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
       setSteamPath(cfg?.steamPath || '')
       setSteamApiKey(cfg?.steamApiKey || '')
       setSteamUserId(cfg?.steamUserId || '')
+      setGameTimerMinutes(typeof cfg?.gameTimerMinutes === 'number' ? cfg.gameTimerMinutes : 0)
     } catch (error) {
       console.error('Error loading configuration:', error)
       toast({
@@ -63,6 +65,7 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
         steamPath,
         steamApiKey,
         steamUserId,
+        gameTimerMinutes: Number.isFinite(gameTimerMinutes) ? Math.max(0, Math.floor(gameTimerMinutes)) : 0,
       })
       toast({
         title: "Success",
@@ -81,38 +84,38 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
     }
   }
 
-  const handleWebLogin = async () => {
-    try {
-      const res = await window.electronAPI.steamWebLogin()
-      if (res?.success) {
-        setSteamApiKey(res.key || '')
-        if (res.steamId) setSteamUserId(res.steamId)
-        // Refresh full config so persona is picked up if present
-        try {
-          const cfg = await window.electronAPI.getConfig()
-          setSteamApiKey(cfg?.steamApiKey || res.key || '')
-          setSteamUserId(cfg?.steamUserId || res.steamId || '')
-        } catch (_) {}
-        toast({ title: 'Login successful', description: res.persona ? `Hello, ${res.persona}` : 'Steam Web API key saved' })
-      } else {
-        toast({ title: 'Login cancelled', description: 'No changes made' })
-      }
-    } catch (error) {
-      toast({ title: 'Login failed', description: 'Unable to complete Steam login', variant: 'destructive' })
-    }
-  }
+  // const handleWebLogin = async () => {
+  //   try {
+  //     const res = await window.electronAPI.steamWebLogin()
+  //     if (res?.success) {
+  //       setSteamApiKey(res.key || '')
+  //       if (res.steamId) setSteamUserId(res.steamId)
+  //       // Refresh full config so persona is picked up if present
+  //       try {
+  //         const cfg = await window.electronAPI.getConfig()
+  //         setSteamApiKey(cfg?.steamApiKey || res.key || '')
+  //         setSteamUserId(cfg?.steamUserId || res.steamId || '')
+  //       } catch (_) {}
+  //       toast({ title: 'Login successful', description: res.persona ? `Hello, ${res.persona}` : 'Steam Web API key saved' })
+  //     } else {
+  //       toast({ title: 'Login cancelled', description: 'No changes made' })
+  //     }
+  //   } catch (error) {
+  //     toast({ title: 'Login failed', description: 'Unable to complete Steam login', variant: 'destructive' })
+  //   }
+  // }
 
-  const handleLogout = async () => {
-    try {
-      const res = await window.electronAPI.steamWebLogout()
-      if (res.success) {
-        setSteamApiKey('')
-        toast({ title: 'Logged out', description: 'Cleared saved Steam Web API key' })
-      }
-    } catch (error) {
-      toast({ title: 'Logout failed', description: 'Unable to clear Steam login', variant: 'destructive' })
-    }
-  }
+  // const handleLogout = async () => {
+  //   try {
+  //     const res = await window.electronAPI.steamWebLogout()
+  //     if (res.success) {
+  //       setSteamApiKey('')
+  //       toast({ title: 'Logged out', description: 'Cleared saved Steam Web API key' })
+  //     }
+  //   } catch (error) {
+  //     toast({ title: 'Logout failed', description: 'Unable to clear Steam login', variant: 'destructive' })
+  //   }
+  // }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -172,24 +175,43 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
                 >
                   Get API Key
                 </Button>
-                <Button
+                {/* <Button
                   variant="default"
                   onClick={handleWebLogin}
                 >
                   Web Login
-                </Button>
-                {steamApiKey && (
+                </Button> */}
+                {/* {steamApiKey && (
                   <Button
                     variant="destructive"
                     onClick={handleLogout}
                   >
                     Logout
                   </Button>
-                )}
+                )} */}
                 <p className="text-xs text-gray-500">
                   Provide your Steam Web API key and SteamID64 to import your library.
                 </p>
               </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="game-timer-minutes">Game timer</Label>
+            <div className="space-y-1">
+              <Input
+                id="game-timer-minutes"
+                type="number"
+                min={0}
+                step={1}
+                value={Number.isFinite(gameTimerMinutes) ? gameTimerMinutes : 0}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10)
+                  setGameTimerMinutes(Number.isNaN(value) ? 0 : value)
+                }}
+                placeholder="0"
+              />
+              <p className="text-sm text-gray-500">Set reminder interval in minutes. 0 disables timer.</p>
             </div>
           </div>
 

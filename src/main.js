@@ -55,7 +55,8 @@ app.whenReady().then(() => {
   // Initialize services
   const configService = new ConfigService();
   const gameSessionService = new GameSessionService(db);
-  gameMonitorService = new GameMonitorService(db, gameSessionService);
+  // Use GameMonitorService with config for game timer notifications
+  gameMonitorService = new GameMonitorService(db, gameSessionService, configService);
   const gameService = new GameService(db, configService, gameSessionService, gameMonitorService);
   const tagService = new TagService(db);
   const statisticsService = new StatisticsService(db);

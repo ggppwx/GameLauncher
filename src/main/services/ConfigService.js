@@ -27,7 +27,8 @@ class ConfigService {
     return {
       steamPath: null,
       theme: 'light',
-      language: 'en'
+      language: 'en',
+      gameTimerMinutes: 0
     };
   }
 
