@@ -31,7 +31,7 @@ function findGameExecutable(manifestPath) {
     // Use the installdir from manifest to find the game directory
     let gameDir = null;
     
-              if (installdir) {
+    if (installdir) {
        // Try to find the game directory using installdir
        // For Steam library structure: G:\SteamLibrary\steamapps\common\<installdir>\
        const possibleGameDirs = [
@@ -65,7 +65,7 @@ function findGameExecutable(manifestPath) {
     console.log(`Looking for executables in: ${gameDir}`);
     
     // Get all .exe files in the game directory
-    const exeFiles = fs.readdirSync(gameDir, { withFileTypes: true })
+    let exeFiles = fs.readdirSync(gameDir, { withFileTypes: true })
       .filter(dirent => dirent.isFile() && dirent.name.endsWith('.exe'))
       .map(dirent => dirent.name)
       .filter(file => 
@@ -74,8 +74,32 @@ function findGameExecutable(manifestPath) {
         !file.toLowerCase().includes('launcher') &&
         !file.toLowerCase().includes('setup') &&
         !file.toLowerCase().includes('crash') &&
-        !file.toLowerCase().includes('debug')
+        !file.toLowerCase().includes('debug') &&
+        !file.toLowerCase().includes('handler') &&
+        !file.toLowerCase().includes('crs')
       );
+
+    // find exe in bin folder (if it exists)
+
+    if (exeFiles.length === 0) {
+      const binDir = path.join(gameDir, 'bin');
+      if (fs.existsSync(binDir)) {
+        const binFiles = fs.readdirSync(binDir, { withFileTypes: true })
+          .filter(dirent => dirent.isFile() && dirent.name.endsWith('.exe'))
+          .map(dirent => dirent.name)
+          .filter(file => 
+            !file.toLowerCase().includes('unins') &&
+            !file.toLowerCase().includes('install') &&
+            !file.toLowerCase().includes('launcher') &&
+            !file.toLowerCase().includes('setup') &&
+            !file.toLowerCase().includes('crash') &&
+            !file.toLowerCase().includes('debug') &&
+            !file.toLowerCase().includes('handler') &&
+            !file.toLowerCase().includes('crs')
+          );
+        exeFiles = [...exeFiles, ...binFiles];
+      }
+    }
     
     if (exeFiles.length === 0) {
       console.log(`No executables found in ${gameDir}`);

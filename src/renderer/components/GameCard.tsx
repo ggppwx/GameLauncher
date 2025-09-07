@@ -133,6 +133,15 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
           <X className="w-3 h-3" />
         </button>
 
+        {/* Tiny process label for debugging (top) */}
+        {game.process && (
+          <div className="absolute top-2 right-10 z-10">
+            <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white/80">
+              {game.process}
+            </span>
+          </div>
+        )}
+
         {/* Tags display */}
         {gameTags.length > 0 && (
           <div className="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[calc(100%-3rem)]">

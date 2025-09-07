@@ -165,8 +165,9 @@ class GameService {
 
                     thumbnailPath = await Promise.race([thumbnailPromise, thumbnailTimeoutPromise]);
 
-                    // Set a timeout for cover image downloading
-                    const coverPromise = getOrDownloadCoverImage(appInfo.appid);
+                    // Set a timeout for cover image downloading (prefer local Steam cache if available)
+                    const steamCacheDir = path.join(steamPath, 'appcache', 'librarycache');
+                    const coverPromise = getOrDownloadCoverImage(appInfo.appid, steamCacheDir);
                     const coverTimeoutPromise = new Promise((_, reject) =>
                       setTimeout(() => reject(new Error('Cover download timeout')), 10000)
                     );
@@ -324,29 +325,111 @@ class GameService {
   }
 
   async importSteamGames(progressCallback) {
+      // pre-process: collect process/path/cover in memory to use in a single upsert later
+      const preProcessMap = new Map();
+      // pre-process: update process and path for installed games using manifests
+      try {
+        const cfg2 = await this.configService.getConfig();
+        const steamPath2 = cfg2.steamPath;
+        if (steamPath2) {
+          const libraryFoldersPath = path.join(steamPath2, 'steamapps', 'libraryfolders.vdf');
+          const libraryCachePath = path.join(steamPath2, 'appcache', 'librarycache'); // to get cover images 
+
+          if (fs.existsSync(libraryFoldersPath)) {
+            const libraryFoldersContent = fs.readFileSync(libraryFoldersPath, 'utf8');
+            const libraryPaths = [];
+            const pathMatches = libraryFoldersContent.match(/"path"\s+"([^"]+)"/g);
+            if (pathMatches) {
+              pathMatches.forEach(match => {
+                const m = match.match(/"path"\s+"([^"]+)"/);
+                if (m) libraryPaths.push(m[1]);
+              });
+            }
+
+            for (const libraryPath of libraryPaths) {
+              const steamappsPath = path.join(libraryPath, 'steamapps');
+              if (!fs.existsSync(steamappsPath)) continue;
+              const appManifestFiles = fs.readdirSync(steamappsPath)
+                .filter(file => file.startsWith('appmanifest_') && file.endsWith('.acf'));
+
+              for (const manifestFile of appManifestFiles) {
+                try {
+                  const manifestPath = path.join(steamappsPath, manifestFile);
+                  const content = fs.readFileSync(manifestPath, 'utf8');
+                  const appIdMatch = content.match(/"appid"\s+"(\d+)"/);
+                  const installDirMatch = content.match(/"installdir"\s+"([^"]+)"/);
+                  if (!appIdMatch) continue;
+                  const appId = appIdMatch[1];
+                  let processName = extractProcessFromManifest(manifestPath);
+                  let gameDir = null;
+                  let coverPath = null;
+                  if (installDirMatch) {
+                    const installDir = installDirMatch[1];
+                    const candidate = path.join(steamappsPath, 'common', installDir);
+                    if (fs.existsSync(candidate)) {
+                      gameDir = candidate;
+                    }
+                  }
+
+                  // Try local Steam library cache for a cover image first
+                  console.log(`Trying to get cover image from: ${libraryCachePath}`);
+                  try {
+                    coverPath = await getOrDownloadCoverImage(appId, libraryCachePath);
+                  } catch (coverErr) {
+                    console.log('Local cover retrieval failed:', coverErr.message);
+                    coverPath = null;
+                  }
+                  // Store pre-processed data for later single upsert
+                  const gameId = `steam-${appId}`;
+                  preProcessMap.set(gameId, {
+                    process: processName || null,
+                    path: gameDir || null,
+                    coverImage: coverPath || null
+                  });
+                } catch (e) {
+                  console.log('Post-process manifest update error:', e.message);
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Post-process update failed:', e.message);
+      }
+
+
+      console.log('Post-process data collection complete');
+
     try {
       const appInfos = await this.getAppInfosFromSteam();
       let results = [];
-      for (let appInfo of appInfos) {
+      const total = appInfos.length;
+      for (let i = 0; i < appInfos.length; i++) {
+        const appInfo = appInfos[i];
+        const pre = preProcessMap.get(appInfo.id);
         // Try to enrich metadata and images
         let thumbnailPath = null;
-        let coverPath = null;
+        let coverPath = pre && pre.coverImage ? pre.coverImage : null;
+        let processName = pre && pre.process ? pre.process : null;
+        let gameDir = pre && pre.path ? pre.path : null;
         let metadata = null;
         try {
-          const metadataPromise = getGameMetadata(appId);
+          const metadataPromise = getGameMetadata(appInfo.appid);
           const metadataTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Metadata fetch timeout')), 15000));
           metadata = await Promise.race([metadataPromise, metadataTimeout]);
 
-          const thumbnailPromise = getOrDownloadThumbnail(appId);
+          const thumbnailPromise = getOrDownloadThumbnail(appInfo.appid);
           const thumbnailTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Thumbnail download timeout')), 10000));
           thumbnailPath = await Promise.race([thumbnailPromise, thumbnailTimeout]);
 
-          const coverPromise = getOrDownloadCoverImage(appId);
-          const coverTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Cover download timeout')), 10000));
-          try {
-            coverPath = await Promise.race([coverPromise, coverTimeout]);
-          } catch (_) {
-            coverPath = null;
+          if (!coverPath) {
+            const coverPromise = getOrDownloadCoverImage(appInfo.appid);
+            const coverTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Cover download timeout')), 10000));
+            try {
+              coverPath = await Promise.race([coverPromise, coverTimeout]);
+            } catch (_) {
+              coverPath = null;
+            }
           }
 
           if (metadata) {
@@ -372,17 +455,17 @@ class GameService {
             appInfo.recommendations = metadata.recommendations;
           }
         } catch (err) {
-          console.error(`Failed to enrich Steam app ${appId}:`, err);
+          console.error(`Failed to enrich Steam app ${appInfo.appid}:`, err);
         }
 
-        // Save to DB
+        // Save to DB (single upsert including process/path/cover)
         await new Promise((resolve, reject) => {
           this.db.run(
-            `INSERT INTO games (id, appid, name, type, thumbnail, description, shortDescription, genres, releaseDate, developer, publisher, metacritic, categories, platforms, backgroundImage, headerImage, capsuleImage, capsuleImageV5, backgroundRaw, coverImage, isFree, requiredAge, supportedLanguages, website, recommendations, steamGridCover, steamGridHero, steamGridLogo, steamGridGameId, playtime, timeLastPlay)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO games (id, appid, name, type, thumbnail, process, path, description, shortDescription, genres, releaseDate, developer, publisher, metacritic, categories, platforms, backgroundImage, headerImage, capsuleImage, capsuleImageV5, backgroundRaw, coverImage, isFree, requiredAge, supportedLanguages, website, recommendations, steamGridCover, steamGridHero, steamGridLogo, steamGridGameId, playtime, timeLastPlay)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                  appid=excluded.appid, name=excluded.name, type=excluded.type,
-                 thumbnail=excluded.thumbnail, description=excluded.description, shortDescription=excluded.shortDescription,
+                 thumbnail=excluded.thumbnail, process = COALESCE(excluded.process, games.process), path = COALESCE(excluded.path, games.path), description=excluded.description, shortDescription=excluded.shortDescription,
                  genres=excluded.genres, releaseDate=excluded.releaseDate, developer=excluded.developer,
                  publisher=excluded.publisher, metacritic=excluded.metacritic, categories=excluded.categories,
                  platforms=excluded.platforms, backgroundImage=excluded.backgroundImage, headerImage=excluded.headerImage,
@@ -397,6 +480,8 @@ class GameService {
               appInfo.name,
               appInfo.type,
               thumbnailPath,
+              processName,
+              gameDir,
               appInfo.description,
               appInfo.shortDescription,
               appInfo.genres ? JSON.stringify(appInfo.genres) : null,
@@ -428,7 +513,7 @@ class GameService {
               if (err) reject(err);
               else resolve();
             }
-          );
+            );
         });
 
         results.push(appInfo);
@@ -438,69 +523,7 @@ class GameService {
         }
 
         // delay 1s
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      // Post-process: update process and path for installed games using manifests
-      try {
-        const cfg2 = await this.configService.getConfig();
-        const steamPath2 = cfg2.steamPath;
-        if (steamPath2) {
-          const libraryFoldersPath = path.join(steamPath2, 'steamapps', 'libraryfolders.vdf');
-          if (fs.existsSync(libraryFoldersPath)) {
-            const libraryFoldersContent = fs.readFileSync(libraryFoldersPath, 'utf8');
-            const libraryPaths = [];
-            const pathMatches = libraryFoldersContent.match(/"path"\s+"([^"]+)"/g);
-            if (pathMatches) {
-              pathMatches.forEach(match => {
-                const m = match.match(/"path"\s+"([^"]+)"/);
-                if (m) libraryPaths.push(m[1]);
-              });
-            }
-
-            for (const libraryPath of libraryPaths) {
-              const steamappsPath = path.join(libraryPath, 'steamapps');
-              if (!fs.existsSync(steamappsPath)) continue;
-              const appManifestFiles = fs.readdirSync(steamappsPath)
-                .filter(file => file.startsWith('appmanifest_') && file.endsWith('.acf'));
-
-              for (const manifestFile of appManifestFiles) {
-                try {
-                  const manifestPath = path.join(steamappsPath, manifestFile);
-                  const content = fs.readFileSync(manifestPath, 'utf8');
-                  const appIdMatch = content.match(/"appid"\s+"(\d+)"/);
-                  const installDirMatch = content.match(/"installdir"\s+"([^"]+)"/);
-                  if (!appIdMatch) continue;
-                  const appId = appIdMatch[1];
-                  let processName = extractProcessFromManifest(manifestPath);
-                  let gameDir = null;
-                  if (installDirMatch) {
-                    const installDir = installDirMatch[1];
-                    const candidate = path.join(steamappsPath, 'common', installDir);
-                    if (fs.existsSync(candidate)) {
-                      gameDir = candidate;
-                    }
-                  }
-
-                  // Update both fields together without overwriting existing with nulls
-                  if (processName || gameDir) {
-                    await new Promise((resolve, reject) => {
-                      this.db.run(
-                        'UPDATE games SET process = COALESCE(?, process), path = COALESCE(?, path) WHERE appid = ?',
-                        [processName || null, gameDir || null, appId],
-                        function (err) { if (err) reject(err); else resolve(); }
-                      );
-                    });
-                  }
-                } catch (e) {
-                  console.log('Post-process manifest update error:', e.message);
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.log('Post-process update failed:', e.message);
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       return results;

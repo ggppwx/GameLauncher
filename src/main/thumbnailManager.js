@@ -247,8 +247,8 @@ async function getOrDownloadThumbnail(appId) {
   }
 }
 
-// Download cover image from Steam CDN
-async function downloadCoverImage(appId) {
+// Download cover image from Steam CDN or copy from local Steam library cache if available
+async function downloadCoverImage(appId, localLibraryCacheDir) {
   try {
     const fileName = `${appId}_cover.jpg`;
     const imagePath = path.join(cacheDir, fileName);
@@ -256,11 +256,65 @@ async function downloadCoverImage(appId) {
     console.log(`Downloading cover image for app ${appId}`);
     console.log(`Cache directory: ${cacheDir}`);
     console.log(`Target file path: ${imagePath}`);
+    console.log(`Local library cache directory: ${localLibraryCacheDir}`);
     
     // Check if already cached
     if (fs.existsSync(imagePath)) {
       console.log(`Cover image already cached for ${appId}`);
       return imagePath;
+    }
+    
+    // Prefer local Steam library cache if provided
+    try {
+      if (localLibraryCacheDir && fs.existsSync(localLibraryCacheDir)) {
+        // Common candidate filenames and nested lookup
+        const localDir = path.join(localLibraryCacheDir, String(appId));
+        console.log(`trying to download image from: ${localLibraryCacheDir}`);
+
+        const candidateFileNames = [
+          'library_600x900_2x.jpg',
+          'library_600x900.jpg',
+          'library_capsule.jpg'
+        ];
+
+        for (const fileName of candidateFileNames) {
+          // Check directly under appid directory
+          const directPath = path.join(localDir, fileName);
+          if (fs.existsSync(directPath)) {
+            try {
+              fs.copyFileSync(directPath, imagePath);
+              console.log(`Copied cover image from Steam cache: ${directPath} -> ${imagePath}`);
+              return imagePath;
+            } catch (copyErr) {
+              console.log(`Failed to copy local cover image: ${copyErr.message}`);
+            }
+          }
+
+          // Check immediate subdirectories for the same filename
+          try {
+            const entries = fs.readdirSync(localDir, { withFileTypes: true });
+            for (const entry of entries) {
+              if (entry.isDirectory()) {
+                const nestedPath = path.join(localDir, entry.name, fileName);
+                if (fs.existsSync(nestedPath)) {
+                  try {
+                    fs.copyFileSync(nestedPath, imagePath);
+                    console.log(`Copied nested cover from Steam cache: ${nestedPath} -> ${imagePath}`);
+                    return imagePath;
+                  } catch (nestedErr) {
+                    console.log(`Failed to copy nested cover image: ${nestedErr.message}`);
+                  }
+                }
+              }
+            }
+          } catch (scanErr) {
+            console.log(`Failed scanning subfolders for cover: ${scanErr.message}`);
+          }
+        }
+      }
+    } catch (localErr) {
+      console.log(`Local library cache check failed: ${localErr.message}`);
+      // continue to network downloads
     }
     
     // Try URLs in order of preference (2x first, then regular)
@@ -354,7 +408,7 @@ async function downloadCoverImage(appId) {
 }
 
 // Get or download cover image
-async function getOrDownloadCoverImage(appId) {
+async function getOrDownloadCoverImage(appId, localLibraryCacheDir) {
   try {
     const fileName = `${appId}_cover.jpg`;
     const imagePath = path.join(cacheDir, fileName);
@@ -365,7 +419,7 @@ async function getOrDownloadCoverImage(appId) {
     }
     
     console.log(`Cover image not cached for ${appId}, attempting download...`);
-    const downloadedPath = await downloadCoverImage(appId);
+    const downloadedPath = await downloadCoverImage(appId, localLibraryCacheDir);
     
     if (downloadedPath) {
       console.log(`Successfully downloaded cover image for ${appId}: ${downloadedPath}`);

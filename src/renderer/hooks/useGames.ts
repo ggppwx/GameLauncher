@@ -9,6 +9,7 @@ export interface UseGamesReturn {
   filteredGames: Game[];
   loading: boolean;
   scanning: boolean;
+  importing: boolean;
   scanProgress: ScanProgress | null;
   searchTerm: string;
   filterType: string;
@@ -31,6 +32,7 @@ export function useGames(): UseGamesReturn {
   const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -95,6 +97,7 @@ export function useGames(): UseGamesReturn {
   // Import Steam games (from account) - non-blocking
   const importSteamGames = useCallback(async () => {
     try {
+      setImporting(true);
       // Do not set scanning overlay; remain interactive.
       setScanProgress(null);
       const loadingToast = toast({
@@ -141,6 +144,7 @@ export function useGames(): UseGamesReturn {
     } finally {
       setScanProgress(null);
       gameApi.removeScanProgressListener();
+      setImporting(false);
     }
   }, [loadGames, toast]);
 
@@ -219,6 +223,7 @@ export function useGames(): UseGamesReturn {
     filteredGames,
     loading,
     scanning,
+    importing,
     scanProgress,
     searchTerm,
     filterType,
