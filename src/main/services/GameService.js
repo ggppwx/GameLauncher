@@ -33,12 +33,24 @@ class GameService {
   async addOrUpdateGame(game) {
     return new Promise((resolve, reject) => {
       this.db.run(
-        `INSERT INTO games (id, appid, name, path, type, thumbnail) VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET appid=excluded.appid, name=excluded.name, path=excluded.path, type=excluded.type, thumbnail=excluded.thumbnail`,
-        [game.id, game.appid, game.name, game.path, game.type, game.thumbnail],
+        `INSERT INTO games (id, appid, name, path, type, thumbnail, overrideProcess) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET appid=excluded.appid, name=excluded.name, path=excluded.path, type=excluded.type, thumbnail=excluded.thumbnail, overrideProcess=COALESCE(excluded.overrideProcess, games.overrideProcess)`,
+        [game.id, game.appid, game.name, game.path, game.type, game.thumbnail, game.overrideProcess || null],
         function (err) {
           if (err) reject(err);
           else resolve({ success: true });
+        }
+      );
+    });
+  }
+
+  async setOverrideProcess(gameId, overrideProcess) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'UPDATE games SET overrideProcess = ? WHERE id = ?',
+        [overrideProcess || null, gameId],
+        function (err) {
+          if (err) reject(err); else resolve({ success: true });
         }
       );
     });
@@ -334,6 +346,12 @@ class GameService {
         if (steamPath2) {
           const libraryFoldersPath = path.join(steamPath2, 'steamapps', 'libraryfolders.vdf');
           const libraryCachePath = path.join(steamPath2, 'appcache', 'librarycache'); // to get cover images 
+          const launchOptionsPath = path.join(steamPath2, 'appcache', 'appinfo.vdf');
+
+
+          let appIdToProcessNameMap = new Map();
+          {
+          }
 
           if (fs.existsSync(libraryFoldersPath)) {
             const libraryFoldersContent = fs.readFileSync(libraryFoldersPath, 'utf8');
@@ -360,7 +378,14 @@ class GameService {
                   const installDirMatch = content.match(/"installdir"\s+"([^"]+)"/);
                   if (!appIdMatch) continue;
                   const appId = appIdMatch[1];
-                  let processName = extractProcessFromManifest(manifestPath);
+
+
+                  // let's first find process name from launchOptionsPath
+                  let processName = appIdToProcessNameMap.get(appId);
+                  if (!processName) {
+                    processName = extractProcessFromManifest(manifestPath);
+                  }
+
                   let gameDir = null;
                   let coverPath = null;
                   if (installDirMatch) {
@@ -542,12 +567,12 @@ class GameService {
         const { shell } = require('electron');
         shell.openExternal(gamePath);
 
-        // Start monitoring for Steam games
+        // Start monitoring for Steam games (use overrideProcess if present)
         if (this.gameMonitorService && gameId) {
-          // Get the game from database to get process info
           const game = await this.getGameById(gameId);
-          if (game && game.process) {
-            await this.gameMonitorService.startMonitoring(gameId, game.process);
+          const proc = (game && game.overrideProcess) ? game.overrideProcess : (game && game.process);
+          if (proc) {
+            await this.gameMonitorService.startMonitoring(gameId, proc);
           }
         }
 
@@ -557,11 +582,12 @@ class GameService {
         const { spawn } = require('child_process');
         spawn(gamePath, [], { detached: true });
 
-        // Start monitoring for regular games
+        // Start monitoring for regular games (use overrideProcess if present)
         if (this.gameMonitorService && gameId) {
           const game = await this.getGameById(gameId);
-          if (game && game.process) {
-            await this.gameMonitorService.startMonitoring(gameId, game.process);
+          const proc = (game && game.overrideProcess) ? game.overrideProcess : (game && game.process);
+          if (proc) {
+            await this.gameMonitorService.startMonitoring(gameId, proc);
           }
         }
 

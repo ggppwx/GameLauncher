@@ -7,6 +7,7 @@ export interface Game {
   appid?: string | null
   thumbnail?: string | null
   process?: string | null
+  overrideProcess?: string | null
   description?: string | null
   shortDescription?: string | null
   genres?: string[] | null

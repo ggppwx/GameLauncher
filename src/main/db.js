@@ -21,6 +21,7 @@ function setupDB() {
       type TEXT,
       thumbnail TEXT,
       process TEXT,
+      overrideProcess TEXT,
       description TEXT,
       shortDescription TEXT,
       genres TEXT,
@@ -59,6 +60,9 @@ function setupDB() {
       }
       if (!cols.has('timeLastPlay')) {
         db.run(`ALTER TABLE games ADD COLUMN timeLastPlay INTEGER`);
+      }
+      if (!cols.has('overrideProcess')) {
+        db.run(`ALTER TABLE games ADD COLUMN overrideProcess TEXT`);
       }
     });
 

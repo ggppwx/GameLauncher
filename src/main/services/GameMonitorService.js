@@ -147,18 +147,34 @@ class GameMonitorService {
       const platform = os.platform();
       
       if (platform === 'win32') {
-        // Windows: use tasklist
-        const command = `tasklist /FI "IMAGENAME eq ${processName}" /FO CSV /NH`;
+        // Windows: list all tasks and do partial prefix match on image name (without .exe)
+        const command = 'tasklist /FO CSV /NH';
+        const targetRaw = path.basename(processName || '').toLowerCase();
+        const target = targetRaw.replace(/\.exe$/, '');
         exec(command, (error, stdout) => {
           if (error) {
             console.error('Error checking Windows process:', error);
             resolve(false);
             return;
           }
-          
-          // Check if the process is in the output
-          const isRunning = stdout.toLowerCase().includes(processName.toLowerCase());
-          resolve(isRunning);
+
+          const lines = stdout.split(/\r?\n/).filter(l => l.trim().length > 0);
+          let found = false;
+          for (const line of lines) {
+            // CSV fields are quoted; first field is image name
+            const m = line.match(/^"([^"]+)"/);
+            if (!m) continue;
+            const image = m[1];
+            const lower = image.toLowerCase();
+            const lowerNoExt = lower.replace(/\.exe$/, '');
+
+            // Exact match still succeeds; otherwise allow prefix match on name without extension
+            if (lower === targetRaw || lowerNoExt.startsWith(target)) {
+              found = true;
+              break;
+            }
+          }
+          resolve(found);
         });
       } else {
         // Unix-like systems: use pgrep

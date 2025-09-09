@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTags: () => ipcRenderer.invoke('get-tags'),
   addTag: (tag) => ipcRenderer.invoke('add-tag', tag),
   addTagsToGame: (gameId, tagNames) => ipcRenderer.invoke('add-tags-to-game', { gameId, tagNames }),
+  setOverrideProcess: (data) => ipcRenderer.invoke('set-override-process', data),
   // Session-related APIs
   getGameStats: () => ipcRenderer.invoke('get-game-stats'),
   getGameSessions: () => ipcRenderer.invoke('get-game-sessions'),

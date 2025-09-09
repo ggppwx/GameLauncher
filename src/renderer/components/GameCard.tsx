@@ -7,6 +7,9 @@ import { TagDialog } from './TagDialog'
 import { useTags } from '../hooks/useTags'
 import { gameApi } from '../services/gameApi'
 import { getGameDisplayName, getGameTypeDisplayName } from '../utils/gameUtils'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog'
+import { Input } from './ui/input'
+import { Button } from './ui/button'
 
 interface GameCardProps {
   game: Game
@@ -23,6 +26,8 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
   const [imageError, setImageError] = useState(false)
   const [showTagDialog, setShowTagDialog] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [showOverrideDialog, setShowOverrideDialog] = useState(false)
+  const [processInput, setProcessInput] = useState('')
   
   // Use the tags hook
   const { tags } = useTags()
@@ -134,10 +139,10 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
         </button>
 
         {/* Tiny process label for debugging (top) */}
-        {game.process && (
+        {(game.overrideProcess || game.process) && (
           <div className="absolute top-2 right-10 z-10">
             <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white/80">
-              {game.process}
+              {game.overrideProcess || game.process}
             </span>
           </div>
         )}
@@ -234,6 +239,16 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
             <TagIcon className="w-4 h-4" />
             Add Tags
           </button>
+          <button
+            onClick={() => {
+              setContextMenu(null)
+              setProcessInput((game.overrideProcess || game.process || '').replace(/^\"|\"$/g, ''))
+              setShowOverrideDialog(true)
+            }}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+          >
+            Set Process Override
+          </button>
         </div>
       )}
 
@@ -244,6 +259,45 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
         game={game}
         onTagsUpdated={handleTagsUpdated}
       />
+
+      {/* Override Process Dialog */}
+      <Dialog open={showOverrideDialog} onOpenChange={setShowOverrideDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Process Override</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={processInput}
+              onChange={(e) => setProcessInput(e.target.value)}
+              placeholder="game.exe"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setShowOverrideDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                const v = processInput.trim()
+                if (!v.toLowerCase().endsWith('.exe')) return
+                try {
+                  await gameApi.setOverrideProcess(game.id, v)
+                  setShowOverrideDialog(false)
+                  onTagsUpdated()
+                } catch (e) {
+                  console.error('Failed to set override process', e)
+                }
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

@@ -62,6 +62,11 @@ function setupGameHandlers(gameService) {
   ipcMain.handle('add-tags-to-game', (event, { gameId, tagNames }) => {
     return gameService.updateGameTags(gameId, tagNames);
   });
+
+  // Set override process for a game
+  ipcMain.handle('set-override-process', (event, { gameId, overrideProcess }) => {
+    return gameService.setOverrideProcess(gameId, overrideProcess);
+  });
 }
 
 module.exports = { setupGameHandlers };

@@ -15,6 +15,7 @@ export interface ElectronAPI {
   addOrUpdateGame: (game: Game) => Promise<{ success: boolean }>
   getThumbnailPath: (appId: string) => Promise<string | null>
   getCoverImage: (appId: string) => Promise<string | null>
+  setOverrideProcess: (data: { gameId: string; overrideProcess: string }) => Promise<{ success: boolean }>
   onScanProgress: (callback: (event: any, data: { current: number; total: number; library: string; gamesFound: number }) => void) => void
   removeScanProgressListener: () => void
   // Tag-related APIs

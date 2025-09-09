@@ -54,6 +54,11 @@ export class GameApi {
     return apiClient.invoke<{ success: boolean }>('addTagsToGame', gameId, tagNames);
   }
 
+  // Set override process
+  async setOverrideProcess(gameId: string, overrideProcess: string): Promise<{ success: boolean }> {
+    return apiClient.invoke<{ success: boolean }>('setOverrideProcess', { gameId, overrideProcess });
+  }
+
   // Listen to scan progress
   onScanProgress(callback: (progress: ScanProgress) => void): void {
     apiClient.onScanProgress((event, data) => callback(data));

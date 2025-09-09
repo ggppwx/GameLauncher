@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { BarChart3, TrendingUp, Gamepad2, Clock, Calendar, Trophy, Loader2, X } from 'lucide-react'
-// import { MonitoringDashboard } from './MonitoringDashboard'
+import { MonitoringDashboard } from './MonitoringDashboard'
 import { GamePlaytimeChart } from './GamePlaytimeChart'
 import { statisticsApi, ComprehensiveStats } from '../services/statisticsApi'
 
@@ -390,14 +390,14 @@ export function Statistics() {
             </motion.div>
 
             {/* Game Monitoring Dashboard */}
-            {/* <motion.div
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
               className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-white/20"
             >
               <MonitoringDashboard />
-            </motion.div> */}
+            </motion.div>
 
             {/* Recent Sessions Section */}
             <motion.div
