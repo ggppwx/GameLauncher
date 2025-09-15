@@ -26,12 +26,12 @@ function setupGameHandlers(gameService) {
   });
 
   // Import Steam games via Steam Web API
-  ipcMain.handle('import-steam-games', async (event) => {
+  ipcMain.handle('import-steam-games', async (event, rescan = true) => {
     try {
       const progressCallback = (data) => {
         event.sender.send('scan-progress', data);
       };
-      return await gameService.importSteamGames(progressCallback);
+      return await gameService.importSteamGames(progressCallback, rescan);
     } catch (error) {
       console.error('Error in import-steam-games handler:', error);
       throw error;

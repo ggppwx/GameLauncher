@@ -30,8 +30,8 @@ export class GameApi {
   }
 
   // Import Steam games (Steam Web API)
-  async importSteamGames(): Promise<Game[]> {
-    return apiClient.invoke<Game[]>('importSteamGames');
+  async importSteamGames(rescan: boolean = true): Promise<Game[]> {
+    return apiClient.invoke<Game[]>('importSteamGames', rescan);
   }
 
   // Launch a game

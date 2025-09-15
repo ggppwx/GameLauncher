@@ -5,7 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   launchGame: (gamePath) => ipcRenderer.invoke('launch-game', gamePath),
   detectSteamGames: () => ipcRenderer.invoke('detect-steam-games'),
-  importSteamGames: () => ipcRenderer.invoke('import-steam-games'),
+  importSteamGames: (rescan = true) => ipcRenderer.invoke('import-steam-games', rescan),
   selectGameFolder: () => ipcRenderer.invoke('select-game-folder'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getConfig: () => ipcRenderer.invoke('get-config'),

@@ -336,7 +336,7 @@ class GameService {
     }
   }
 
-  async importSteamGames(progressCallback) {
+  async importSteamGames(progressCallback, rescan = true) {
       // pre-process: collect process/path/cover in memory to use in a single upsert later
       const preProcessMap = new Map();
       // pre-process: update process and path for installed games using manifests
@@ -423,8 +423,6 @@ class GameService {
       }
 
 
-      console.log('Post-process data collection complete');
-
     try {
       const appInfos = await this.getAppInfosFromSteam();
       let results = [];
@@ -432,6 +430,20 @@ class GameService {
       for (let i = 0; i < appInfos.length; i++) {
         const appInfo = appInfos[i];
         const pre = preProcessMap.get(appInfo.id);
+        // If rescan is disabled, skip games that already exist in DB
+        if (!rescan) {
+          try {
+            const existing = await this.getGameById(appInfo.id);
+            if (existing) {
+              if (progressCallback) {
+                progressCallback({ current: i + 1, total, library: 'Steam API', gamesFound: results.length });
+              }
+              await new Promise(resolve => setTimeout(resolve, 100));
+              continue;
+            }
+          } catch (_) {
+          }
+        }
         // Try to enrich metadata and images
         let thumbnailPath = null;
         let coverPath = pre && pre.coverImage ? pre.coverImage : null;

@@ -4,7 +4,7 @@ import { ComprehensiveStats, MostPlayedGame, OverallStats } from '../services/st
 export interface ElectronAPI {
   launchGame: (gamePath: string) => Promise<{ success: boolean; error?: string }>
   detectSteamGames: () => Promise<Game[]>
-  importSteamGames: () => Promise<Game[]>
+  importSteamGames: (rescan?: boolean) => Promise<Game[]>
   selectGameFolder: () => Promise<string | null>
   openExternal: (url: string) => Promise<{ success: boolean; error?: string }>
   getConfig: () => Promise<any>
