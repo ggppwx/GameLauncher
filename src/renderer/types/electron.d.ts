@@ -39,6 +39,8 @@ export interface ElectronAPI {
   getCompletedGamesCount: () => Promise<number>
   deleteSession: (id: string | number) => Promise<{ success: boolean }>
   getMonthPlaytimeBreakdown: (year: number, month: number) => Promise<{ year: number; month: number; days: { date: string; total: number; games: { gameId: string; gameName: string; seconds: number }[] }[] }>
+  getThisWeekSummary: () => Promise<{ totalPlaytime: number; gamesPlayed: number }>
+  getWeeklyPlaytimeLast8Weeks: () => Promise<{ weekStart: string; totalPlaytime: number }[]>
 }
 
 declare global {

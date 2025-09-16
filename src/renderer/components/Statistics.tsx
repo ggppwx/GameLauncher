@@ -3,7 +3,8 @@ import { motion } from 'framer-motion'
 import { BarChart3, TrendingUp, Gamepad2, Clock, Calendar, Trophy, Loader2, X } from 'lucide-react'
 import { MonitoringDashboard } from './MonitoringDashboard'
 import { GamePlaytimeChart } from './GamePlaytimeChart'
-import { statisticsApi, ComprehensiveStats } from '../services/statisticsApi'
+import { WeeklyPlaytimeChart } from './WeeklyPlaytimeChart'
+import { statisticsApi, ComprehensiveStats, ThisWeekSummary, WeeklyPlaytimePoint } from '../services/statisticsApi'
 
 function CalendarPlaytimeView() {
   const [current, setCurrent] = useState(() => {
@@ -145,6 +146,8 @@ export function Statistics() {
   const [stats, setStats] = useState<ComprehensiveStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [thisWeek, setThisWeek] = useState<ThisWeekSummary | null>(null);
+  const [weeklySeries, setWeeklySeries] = useState<WeeklyPlaytimePoint[] | null>(null);
 
   useEffect(() => {
     loadStatistics();
@@ -155,10 +158,16 @@ export function Statistics() {
       setLoading(true);
       setError(null);
       console.log('Loading statistics...');
-      const data = await statisticsApi.getComprehensiveStats();
+      const [data, week, weekly] = await Promise.all([
+        statisticsApi.getComprehensiveStats(),
+        statisticsApi.getThisWeekSummary(),
+        statisticsApi.getWeeklyPlaytimeLast8Weeks(),
+      ]);
       console.log('Statistics data received:', data);
       console.log('Most played games:', data?.mostPlayedGames);
       setStats(data);
+      setThisWeek(week);
+      setWeeklySeries(weekly);
     } catch (err) {
       console.error('Error loading statistics:', err);
       setError('Failed to load statistics');
@@ -283,7 +292,7 @@ export function Statistics() {
                 </div>
               </motion.div>
 
-              {/* Games Completed */}
+              {/* This Week (Top-right on lg) */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -291,12 +300,19 @@ export function Statistics() {
                 className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="p-3 bg-yellow-100 rounded-lg">
-                    <Trophy className="w-6 h-6 text-yellow-600" />
+                  <div className="p-3 bg-red-100 rounded-lg">
+                    <TrendingUp className="w-6 h-6 text-red-600" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Completed</p>
-                    <p className="text-2xl font-bold text-gray-800">{stats?.completedGames || 0}</p>
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium text-gray-600">This Week</p>
+                    <div className="flex items-baseline space-x-3">
+                      <span className="text-2xl font-bold text-gray-800">
+                        {thisWeek ? statisticsApi.formatPlaytime(thisWeek.totalPlaytime) : '0h'}
+                      </span>
+                      <span className="text-sm text-gray-600">
+                        {thisWeek ? `${thisWeek.gamesPlayed} games (≥15m)` : '-'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -321,7 +337,7 @@ export function Statistics() {
                 </div>
               </motion.div>
 
-              {/* Most Played */}
+              {/* Most Played (beneath This Week on lg) */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -340,12 +356,30 @@ export function Statistics() {
                   </div>
                 </div>
               </motion.div>
+              
+              {/* Games Completed */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.6 }}
+                className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:shadow-lg transition-shadow"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-yellow-100 rounded-lg">
+                    <Trophy className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Completed</p>
+                    <p className="text-2xl font-bold text-gray-800">{stats?.completedGames || 0}</p>
+                  </div>
+                </div>
+              </motion.div>
 
               {/* Average Session */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.6 }}
+                transition={{ delay: 0.7 }}
                 className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-white/20 hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-center space-x-3">
@@ -375,6 +409,23 @@ export function Statistics() {
               </div>
               <GamePlaytimeChart 
                 data={stats?.mostPlayedGames || []} 
+                formatPlaytime={statisticsApi.formatPlaytime}
+              />
+            </motion.div>
+
+            {/* Weekly Playtime (Last 8 Weeks) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.75 }}
+              className="bg-white/80 backdrop-blur-sm rounded-lg p-6 border border-white/20"
+            >
+              <div className="flex items-center space-x-3 mb-6">
+                <BarChart3 className="w-8 h-8 text-purple-600" />
+                <h3 className="text-xl font-bold text-gray-800">Weekly Playtime (Last 2 Months)</h3>
+              </div>
+              <WeeklyPlaytimeChart
+                data={weeklySeries || []}
                 formatPlaytime={statisticsApi.formatPlaytime}
               />
             </motion.div>

@@ -81,6 +81,26 @@ function setupStatisticsHandlers(statisticsService) {
     }
   });
 
+  // Get this week's summary
+  ipcMain.handle('get-this-week-summary', async () => {
+    try {
+      return await statisticsService.getThisWeekSummary();
+    } catch (error) {
+      console.error('Error getting this week summary:', error);
+      throw error;
+    }
+  });
+
+  // Get weekly playtime for last 8 weeks
+  ipcMain.handle('get-weekly-playtime-last-8-weeks', async () => {
+    try {
+      return await statisticsService.getWeeklyPlaytimeLast8Weeks();
+    } catch (error) {
+      console.error('Error getting weekly playtime:', error);
+      throw error;
+    }
+  });
+
   // Delete a session by id
   ipcMain.handle('delete-session', async (event, id) => {
     try {

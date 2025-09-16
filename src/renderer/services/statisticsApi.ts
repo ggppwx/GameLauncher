@@ -42,6 +42,16 @@ export interface ComprehensiveStats {
   completedGames: number;
 }
 
+export interface ThisWeekSummary {
+  totalPlaytime: number;
+  gamesPlayed: number;
+}
+
+export interface WeeklyPlaytimePoint {
+  weekStart: string; // YYYY-MM-DD (ISO week Monday)
+  totalPlaytime: number; // seconds
+}
+
 export class StatisticsApi {
   // Get comprehensive statistics
   async getComprehensiveStats(): Promise<ComprehensiveStats> {
@@ -56,6 +66,16 @@ export class StatisticsApi {
   // Get most played games in last 7 days
   async getMostPlayedGames7Days(): Promise<MostPlayedGame[]> {
     return apiClient.invoke<MostPlayedGame[]>('getMostPlayedGames7Days');
+  }
+
+  // Get this week's summary
+  async getThisWeekSummary(): Promise<ThisWeekSummary> {
+    return apiClient.invoke<ThisWeekSummary>('getThisWeekSummary');
+  }
+
+  // Get weekly playtime last 8 weeks (including current week)
+  async getWeeklyPlaytimeLast8Weeks(): Promise<WeeklyPlaytimePoint[]> {
+    return apiClient.invoke<WeeklyPlaytimePoint[]>('getWeeklyPlaytimeLast8Weeks');
   }
 
   // Get overall statistics

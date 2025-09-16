@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCompletedGamesCount: () => ipcRenderer.invoke('get-completed-games-count'),
   deleteSession: (id) => ipcRenderer.invoke('delete-session', id),
   getMonthPlaytimeBreakdown: (year, month) => ipcRenderer.invoke('get-month-playtime-breakdown', year, month),
+  getThisWeekSummary: () => ipcRenderer.invoke('get-this-week-summary'),
+  getWeeklyPlaytimeLast8Weeks: () => ipcRenderer.invoke('get-weekly-playtime-last-8-weeks'),
   setConfig: (config) => ipcRenderer.invoke('set-config', config),
   getSteamPath: () => ipcRenderer.invoke('get-steam-path'),
   setSteamPath: (steamPath) => ipcRenderer.invoke('set-steam-path', steamPath),
