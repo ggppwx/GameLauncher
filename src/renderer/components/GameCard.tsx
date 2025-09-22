@@ -10,6 +10,7 @@ import { getGameDisplayName, getGameTypeDisplayName } from '../utils/gameUtils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
+import { GameDetailsDialog } from './GameDetailsDialog'
 
 interface GameCardProps {
   game: Game
@@ -28,6 +29,8 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [showOverrideDialog, setShowOverrideDialog] = useState(false)
   const [processInput, setProcessInput] = useState('')
+  const [showDetails, setShowDetails] = useState(false)
+  const [suppressClicksUntil, setSuppressClicksUntil] = useState(0)
   
   // Use the tags hook
   const { tags } = useTags()
@@ -113,6 +116,10 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
         className="cursor-pointer rounded-md overflow-hidden bg-black/60"
         style={{ willChange: 'transform' }}
         onContextMenu={handleContextMenu}
+        onClick={() => {
+          if (Date.now() < suppressClicksUntil) return
+          setShowDetails(true)
+        }}
       >
         <div
           className={`game-card-steam relative overflow-hidden ${!isInstalled ? 'opacity-60' : ''}`}
@@ -298,6 +305,20 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Game Details Dialog */}
+      <GameDetailsDialog
+        open={showDetails}
+        onOpenChange={(open) => {
+          setShowDetails(open)
+          if (!open) {
+            setSuppressClicksUntil(Date.now() + 300)
+          }
+        }}
+        game={game}
+        onLaunch={onLaunch}
+        onTagsUpdated={handleTagsUpdated}
+      />
     </>
   )
 }

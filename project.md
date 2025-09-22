@@ -73,6 +73,15 @@ follow typical electron app structure
       - a pop up show up and you can input tag 
 
 
+## Game details 
+- [ ] when clicking the game card (left click the game cover, not "play" or "delete"), show a "Game detail" diaglog page 
+  - this dialog page is pretty large, it should cover almost 4/5 area of the game card grid area 
+  - on the top of page, there should be a "play" button, like steam 
+  - this page shows the game detail, game, also the game statistics 
+  - you close the page by clicking X or press esc 
+
+
+
 ## game statistic
 - [X] Implment basic statistic in the statistic tab 
   - use the game_session table we already have, query the database to get statistic info

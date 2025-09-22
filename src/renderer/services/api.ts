@@ -26,6 +26,14 @@ export class ApiClient {
   removeScanProgressListener(): void {
     window.electronAPI.removeScanProgressListener();
   }
+
+  onGamesUpdated(callback: (event: any, data: any) => void): void {
+    window.electronAPI.onGamesUpdated(callback);
+  }
+
+  removeGamesUpdatedListener(): void {
+    window.electronAPI.removeGamesUpdatedListener();
+  }
 }
 
 export const apiClient = new ApiClient();

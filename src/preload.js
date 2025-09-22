@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCoverImage: (appId) => ipcRenderer.invoke('get-cover-image', appId),
   onScanProgress: (callback) => ipcRenderer.on('scan-progress', callback),
   removeScanProgressListener: () => ipcRenderer.removeAllListeners('scan-progress'),
+  onGamesUpdated: (callback) => ipcRenderer.on('games-updated', callback),
+  removeGamesUpdatedListener: () => ipcRenderer.removeAllListeners('games-updated'),
   // Tag-related APIs
   getTags: () => ipcRenderer.invoke('get-tags'),
   addTag: (tag) => ipcRenderer.invoke('add-tag', tag),

@@ -350,8 +350,6 @@ class GameService {
 
 
           let appIdToProcessNameMap = new Map();
-          {
-          }
 
           if (fs.existsSync(libraryFoldersPath)) {
             const libraryFoldersContent = fs.readFileSync(libraryFoldersPath, 'utf8');

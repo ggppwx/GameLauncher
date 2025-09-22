@@ -67,6 +67,25 @@ app.whenReady().then(() => {
   // Refresh Steam playtime and last play on startup (non-blocking)
   gameService.refreshSteamGames().catch(err => console.error('Startup Steam refresh failed:', err));
 
+  // When a session ends, refresh Steam games and notify renderer to reload list
+  try {
+    gameSessionService.on('sessionEnded', async ({ gameId, sessionId, gameTime }) => {
+      try {
+        await gameService.refreshSteamGames();
+      } catch (e) {
+        console.error('Steam refresh after session end failed:', e);
+      }
+      try {
+        const win = BrowserWindow.getAllWindows()[0];
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('games-updated', { reason: 'session-ended', gameId, sessionId, gameTime });
+        }
+      } catch (_) {}
+    });
+  } catch (e) {
+    console.error('Failed to bind sessionEnded handler:', e);
+  }
+
   // Create window
   createWindow();
 });

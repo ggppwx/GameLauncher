@@ -18,6 +18,8 @@ export interface ElectronAPI {
   setOverrideProcess: (data: { gameId: string; overrideProcess: string }) => Promise<{ success: boolean }>
   onScanProgress: (callback: (event: any, data: { current: number; total: number; library: string; gamesFound: number }) => void) => void
   removeScanProgressListener: () => void
+  onGamesUpdated: (callback: (event: any, data: { reason?: string; gameId?: string; sessionId?: string | number; gameTime?: number }) => void) => void
+  removeGamesUpdatedListener: () => void
   // Tag-related APIs
   getTags: () => Promise<Tag[]>
   addTag: (tag: { name: string; color?: string; isDefault?: boolean }) => Promise<Tag>

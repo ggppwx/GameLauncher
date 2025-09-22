@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Game } from '../types/game';
 import { gameApi, ScanProgress } from '../services/gameApi';
+import { apiClient } from '../services/api';
 import { useToast } from '../components/ui/use-toast';
 import { filterGamesBySearch, filterGamesByType, filterGamesByTags } from '../utils/filterUtils';
 
@@ -216,6 +217,14 @@ export function useGames(): UseGamesReturn {
   // Load games on mount
   useEffect(() => {
     loadGames();
+    // Listen to background updates (e.g., session ended -> Steam refresh)
+    const handler = async (_event?: any, _data?: any) => {
+      try { await loadGames(); } catch (_) {}
+    };
+    try { (apiClient as any).onGamesUpdated(handler); } catch (_) {}
+    return () => {
+      try { (apiClient as any).removeGamesUpdatedListener(); } catch (_) {}
+    };
   }, [loadGames]);
 
   return {

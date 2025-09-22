@@ -1,7 +1,9 @@
 const crypto = require('crypto');
+const EventEmitter = require('events');
 
-class GameSessionService {
+class GameSessionService extends EventEmitter {
   constructor(db) {
+    super();
     this.db = db;
     this.activeSessions = new Map(); // Track active sessions in memory
   }
@@ -75,6 +77,7 @@ class GameSessionService {
                         if (err) {
                           reject(err);
                         } else {
+                          try { this.emit('sessionEnded', { gameId: row.game_id, sessionId: row.session_id, gameTime, deleted: true }); } catch (_) {}
                           resolve({ 
                             sessionId: row.session_id,
                             startTime: row.start_time,
@@ -103,6 +106,7 @@ class GameSessionService {
                             break;
                           }
                         }
+                        try { this.emit('sessionEnded', { gameId: row.game_id, sessionId: row.session_id, gameTime, deleted: false }); } catch (_) {}
                         resolve({ 
                           sessionId: row.session_id,
                           startTime: row.start_time,
