@@ -12,18 +12,18 @@ function setupGameHandlers(gameService) {
   });
 
   // Detect Steam games
-  ipcMain.handle('detect-steam-games', async (event) => {
-    try {
-      const progressCallback = (data) => {
-        event.sender.send('scan-progress', data);
-      };
+  // ipcMain.handle('detect-steam-games', async (event) => {
+  //   try {
+  //     const progressCallback = (data) => {
+  //       event.sender.send('scan-progress', data);
+  //     };
       
-      return await gameService.detectSteamGames(progressCallback);
-    } catch (error) {
-      console.error('Error in detect-steam-games handler:', error);
-      throw error;
-    }
-  });
+  //     return await gameService.detectSteamGames(progressCallback);
+  //   } catch (error) {
+  //     console.error('Error in detect-steam-games handler:', error);
+  //     throw error;
+  //   }
+  // });
 
   // Import Steam games via Steam Web API
   ipcMain.handle('import-steam-games', async (event, rescan = true) => {
@@ -66,6 +66,21 @@ function setupGameHandlers(gameService) {
   // Set override process for a game
   ipcMain.handle('set-override-process', (event, { gameId, overrideProcess }) => {
     return gameService.setOverrideProcess(gameId, overrideProcess);
+  });
+
+  // Get game notes
+  ipcMain.handle('get-game-notes', (event, gameId) => {
+    return gameService.getGameNotes(gameId);
+  });
+
+  // Update game notes
+  ipcMain.handle('update-game-notes', (event, { gameId, notes }) => {
+    return gameService.updateGameNotes(gameId, notes);
+  });
+
+  // Remove game
+  ipcMain.handle('remove-game', (event, gameId) => {
+    return gameService.removeGame(gameId);
   });
 }
 

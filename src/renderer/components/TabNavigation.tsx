@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion'
-import { Gamepad2, BarChart3 } from 'lucide-react'
+import { Gamepad2, BarChart3, Sparkles } from 'lucide-react'
 
 interface TabNavigationProps {
-  activeTab: 'library' | 'statistics'
-  onTabChange: (tab: 'library' | 'statistics') => void
+  activeTab: 'library' | 'recommendation' | 'statistics'
+  onTabChange: (tab: 'library' | 'recommendation' | 'statistics') => void
 }
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
@@ -30,6 +30,20 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
           >
             <Gamepad2 className="w-4 h-4" />
             <span>Library</span>
+          </motion.button>
+
+          <motion.button
+            onClick={() => onTabChange('recommendation')}
+            className={`flex items-center space-x-2 px-4 py-3 rounded-t-lg font-medium transition-colors ${
+              activeTab === 'recommendation'
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
+            }`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Recommendation</span>
           </motion.button>
 
           <motion.button

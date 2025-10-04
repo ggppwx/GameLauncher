@@ -8,6 +8,64 @@ import { gameApi } from '../services/gameApi'
 import { statisticsApi } from '../services/statisticsApi'
 import { TagDialog } from './TagDialog'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import CalendarHeatmap from 'react-calendar-heatmap'
+import 'react-calendar-heatmap/dist/styles.css'
+import MDEditor from '@uiw/react-md-editor'
+
+// Custom styles for the heatmap
+const heatmapStyles = `
+  .react-calendar-heatmap .color-empty {
+    fill: #f3f4f6;
+  }
+  .react-calendar-heatmap .color-scale-1 {
+    fill: #dbeafe;
+  }
+  .react-calendar-heatmap .color-scale-2 {
+    fill: #93c5fd;
+  }
+  .react-calendar-heatmap .color-scale-3 {
+    fill: #60a5fa;
+  }
+  .react-calendar-heatmap .color-scale-4 {
+    fill: #3b82f6;
+  }
+  .react-calendar-heatmap .color-scale-5 {
+    fill: #1d4ed8;
+  }
+  .react-calendar-heatmap rect:hover {
+    stroke: #3b82f6;
+    stroke-width: 2px;
+  }
+  .react-calendar-heatmap text {
+    font-size: 10px;
+    fill: #6b7280;
+  }
+  .react-calendar-heatmap .react-calendar-heatmap-month-label {
+    font-size: 10px;
+    fill: #6b7280;
+  }
+  .react-calendar-heatmap .react-calendar-heatmap-weekday-label {
+    font-size: 9px;
+    fill: #6b7280;
+  }
+  
+  /* Prevent layout shifts and improve rendering performance */
+  .react-calendar-heatmap {
+    contain: layout style paint;
+    will-change: auto;
+  }
+  
+  /* Optimize markdown editor rendering */
+  .w-md-editor {
+    contain: layout style paint;
+  }
+  
+  /* Prevent dialog content from shaking */
+  [data-radix-dialog-content] {
+    contain: layout style paint;
+    transform: translateZ(0);
+  }
+`
 
 interface GameDetailsDialogProps {
   open: boolean
@@ -22,14 +80,30 @@ export function GameDetailsDialog({ open, onOpenChange, game, onLaunch, onTagsUp
   const [showTagDialog, setShowTagDialog] = useState(false)
   const [recentSessions, setRecentSessions] = useState<Array<{ id: string | number; gameId: string; gameName: string; startTime: string; endTime?: string | null; gameTime?: number | null }>>([])
 
+  // Inject heatmap styles once when component mounts
+  useEffect(() => {
+    const styleId = 'heatmap-styles'
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style')
+      style.id = styleId
+      style.textContent = heatmapStyles
+      document.head.appendChild(style)
+    }
+  }, [])
+
   useEffect(() => {
     if (open && game.type === 'steam' && game.appid) {
       gameApi.getCoverImage(game.appid).then(setCoverPath).catch(() => setCoverPath(null))
+    } else {
+      setCoverPath(null)
     }
   }, [open, game.type, game.appid])
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setRecentSessions([])
+      return
+    }
     const load = async () => {
       try {
         const sessions = await statisticsApi.getRecentSessions(50)
@@ -142,6 +216,12 @@ export function GameDetailsDialog({ open, onOpenChange, game, onLaunch, onTagsUp
 
               {/* Last 14 days bar chart */}
               <TwoWeeksChart recentSessions={recentSessions} />
+              
+              {/* Playdate Heatmap */}
+              <PlaydateHeatmap recentSessions={recentSessions} />
+              
+              {/* Game Notes */}
+              <GameNotesEditor game={game} />
             </div>
 
             {/* Right: Recent sessions */}
@@ -248,6 +328,179 @@ function TwoWeeksChart({ recentSessions }: TwoWeeksChartProps) {
       </div>
       {!hasData && (
         <div className="text-xs text-gray-500 mt-2">No playtime recorded in the last 14 days.</div>
+      )}
+    </div>
+  )
+}
+
+interface PlaydateHeatmapProps {
+  recentSessions: Array<{ id: string | number; gameId: string; gameName: string; startTime: string; endTime?: string | null; gameTime?: number | null }>
+}
+
+function PlaydateHeatmap({ recentSessions }: PlaydateHeatmapProps) {
+  const heatmapData = useMemo(() => {
+    // Create a map of dates to playtime
+    const playtimeByDate = new Map<string, number>()
+    
+    for (const session of recentSessions || []) {
+      if (!session.startTime) continue
+      const sessionDate = new Date(session.startTime)
+      const dateKey = sessionDate.toISOString().split('T')[0] // YYYY-MM-DD format
+      
+      let playtimeSeconds = 0
+      if (typeof session.gameTime === 'number' && session.gameTime > 0) {
+        playtimeSeconds = session.gameTime
+      } else if (session.endTime) {
+        playtimeSeconds = Math.max(0, Math.floor((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / 1000))
+      }
+      
+      const existing = playtimeByDate.get(dateKey) || 0
+      playtimeByDate.set(dateKey, existing + playtimeSeconds)
+    }
+    
+    // Convert to array format expected by react-calendar-heatmap
+    const values = Array.from(playtimeByDate.entries()).map(([date, count]) => ({
+      date,
+      count: Math.floor(count / 60) // Convert seconds to minutes for better scaling
+    }))
+    
+    return values
+  }, [recentSessions])
+  
+  const formatPlaytime = (minutes: number) => {
+    if (minutes === 0) return 'No playtime'
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0) {
+      return `${hours}h ${mins}m`
+    }
+    return `${mins}m`
+  }
+  
+  const hasData = heatmapData.some(d => d.count > 0)
+  
+  return (
+    <div className="bg-white rounded-lg p-4 border border-gray-200">
+      <div className="mb-3">
+        <h4 className="text-sm font-semibold text-gray-800">Playtime Heatmap (Last Year)</h4>
+        <p className="text-xs text-gray-600 mt-1">Each square represents a day. Darker colors indicate more playtime.</p>
+      </div>
+      
+      {hasData ? (
+        <div className="space-y-3">
+          <CalendarHeatmap
+            startDate={new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)} // 365 days ago
+            endDate={new Date()}
+            values={heatmapData}
+            classForValue={(value) => {
+              if (!value || value.count === 0) {
+                return 'color-empty'
+              }
+              if (value.count < 30) {
+                return 'color-scale-1' // Less than 30 minutes
+              }
+              if (value.count < 60) {
+                return 'color-scale-2' // 30-60 minutes
+              }
+              if (value.count < 120) {
+                return 'color-scale-3' // 1-2 hours
+              }
+              return 'color-scale-4' // More than 2 hours
+            }}
+            titleForValue={(value) => {
+              if (!value) return 'No data'
+              return `${new Date(value.date).toLocaleDateString()}: ${formatPlaytime(value.count)}`
+            }}
+            showWeekdayLabels={true}
+            onClick={(value) => {
+              if (value) {
+                console.log(`Clicked on ${value.date}: ${formatPlaytime(value.count)}`)
+              }
+            }}
+          />
+        </div>
+      ) : (
+        <div className="text-xs text-gray-500 py-8 text-center">
+          No playtime recorded in the last year.
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface GameNotesEditorProps {
+  game: Game
+}
+
+function GameNotesEditor({ game }: GameNotesEditorProps) {
+  const [notes, setNotes] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Load notes when component mounts or game changes
+  useEffect(() => {
+    const loadNotes = async () => {
+      setIsLoading(true)
+      try {
+        const gameNotes = await gameApi.getGameNotes(game.id)
+        setNotes(gameNotes || '')
+      } catch (error) {
+        console.error('Failed to load notes:', error)
+        setNotes('')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadNotes()
+  }, [game.id])
+
+  // Auto-save with debounce
+  useEffect(() => {
+    if (isLoading) return // Don't save while loading
+    
+    const timeoutId = setTimeout(async () => {
+      setIsSaving(true)
+      try {
+        await gameApi.updateGameNotes(game.id, notes)
+      } catch (error) {
+        console.error('Failed to save notes:', error)
+      } finally {
+        setIsSaving(false)
+      }
+    }, 1000) // Save after 1 second of no typing
+
+    return () => clearTimeout(timeoutId)
+  }, [notes, game.id, isLoading])
+
+  return (
+    <div className="bg-white rounded-lg p-4 border border-gray-200">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-semibold text-gray-800">Game Notes</h4>
+        <div className="flex items-center gap-2">
+          {isLoading && (
+            <div className="text-xs text-gray-500">Loading...</div>
+          )}
+          {isSaving && (
+            <div className="text-xs text-gray-500">Saving...</div>
+          )}
+        </div>
+      </div>
+      
+      {isLoading ? (
+        <div className="h-[300px] flex items-center justify-center text-gray-500">
+          Loading notes...
+        </div>
+      ) : (
+        <MDEditor
+          value={notes}
+          onChange={(value) => setNotes(value || '')}
+          height={300}
+          data-color-mode="light"
+          visibleDragbar={false}
+          hideToolbar={false}
+          preview="preview"
+        />
       )}
     </div>
   )

@@ -74,7 +74,7 @@ follow typical electron app structure
 
 
 ## Game details 
-- [ ] when clicking the game card (left click the game cover, not "play" or "delete"), show a "Game detail" diaglog page 
+- [X] when clicking the game card (left click the game cover, not "play" or "delete"), show a "Game detail" diaglog page 
   - this dialog page is pretty large, it should cover almost 4/5 area of the game card grid area 
   - on the top of page, there should be a "play" button, like steam 
   - this page shows the game detail, game, also the game statistics 
@@ -89,7 +89,39 @@ follow typical electron app structure
   - sorted by play times 
 - [ ] calendar view on recent game sessions 
 
-### game notes and tracking 
+## game notes and tracking 
+- Note taking system 
+
+
+
+## Build AI into the system 
+### preparation steps 
+- [X] add a "recommendation" tab after "library" tab,  where it shows 3 random games, it will use the exact same gamecard component used in libarary 
+- you can skip and it will show you next 3 games 
+- for each game session. 
+
+### Smart recommendation
+- method: bandit 
+- only used for current user
+- gaming session data already in game_sessions table 
+  - we can derived a few signals from the table 
+-  context
+  - day of the week (weekdays/weekend)
+  - time of the day (Morning / Afternoon / Night)
+  - Last played genres (in the db games table )
+  - time since last session
+- pre bandit filter
+  - installed = true 
+- reward (somthing like the following)
+  - No launch → 0.0
+  - Launch, quit < 15 min → 0.2
+  - Launch, 15–60 min → 0.7
+  - Launch, ≥ 60 min and no crash → 1.0
+- storage
+  - we already have the existing table game_sessions
+  - use the same sqlite db to save the ML data 
+
+
 
 
 

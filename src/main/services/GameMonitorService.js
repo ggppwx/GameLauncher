@@ -5,10 +5,11 @@ const fs = require('fs');
 const { Notification, BrowserWindow, screen, shell, app } = require('electron');
 
 class GameMonitorService {
-  constructor(db, gameSessionService, configService) {
+  constructor(db, gameSessionService, configService, gameService) {
     this.db = db;
     this.gameSessionService = gameSessionService;
     this.configService = configService;
+    this.gameService = gameService;
     this.monitoredGames = new Map(); // gameId -> { gameId, processName, startTime, sessionId }
     this.monitoringInterval = null;
     this.isMonitoring = false;
@@ -91,6 +92,16 @@ class GameMonitorService {
         this.clearGameTimer(gameId);
         
         console.log(`Stopped monitoring for game ${monitoredGame.gameId}`);
+        
+        // Refresh Steam games data after session ends
+        if (this.gameService) {
+          try {
+            await this.gameService.refreshSteamGames();
+            console.log('Steam games refreshed after session end');
+          } catch (error) {
+            console.error('Failed to refresh Steam games after session end:', error);
+          }
+        }
       }
       
       // Stop monitoring loop if no more games are being monitored

@@ -30,7 +30,7 @@ export function GameLauncher() {
     setFilterType,
     setSelectedTags,
     setInstalledOnly,
-    scanSteamGames,
+    // scanSteamGames,
     importSteamGames,
     launchGame,
     removeGame,

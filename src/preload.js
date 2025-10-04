@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   launchGame: (gamePath) => ipcRenderer.invoke('launch-game', gamePath),
-  detectSteamGames: () => ipcRenderer.invoke('detect-steam-games'),
+  // detectSteamGames: () => ipcRenderer.invoke('detect-steam-games'),
   importSteamGames: (rescan = true) => ipcRenderer.invoke('import-steam-games', rescan),
   selectGameFolder: () => ipcRenderer.invoke('select-game-folder'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setSteamPath: (steamPath) => ipcRenderer.invoke('set-steam-path', steamPath),
   getGames: () => ipcRenderer.invoke('get-games'),
   addOrUpdateGame: (game) => ipcRenderer.invoke('add-or-update-game', game),
+  removeGame: (gameId) => ipcRenderer.invoke('remove-game', gameId),
   getThumbnailPath: (appId) => ipcRenderer.invoke('get-thumbnail-path', appId),
   getCoverImage: (appId) => ipcRenderer.invoke('get-cover-image', appId),
   onScanProgress: (callback) => ipcRenderer.on('scan-progress', callback),
@@ -37,6 +38,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   addTag: (tag) => ipcRenderer.invoke('add-tag', tag),
   addTagsToGame: (gameId, tagNames) => ipcRenderer.invoke('add-tags-to-game', { gameId, tagNames }),
   setOverrideProcess: (data) => ipcRenderer.invoke('set-override-process', data),
+  getGameNotes: (gameId) => ipcRenderer.invoke('get-game-notes', gameId),
+  updateGameNotes: (data) => ipcRenderer.invoke('update-game-notes', data),
   // Session-related APIs
   getGameStats: () => ipcRenderer.invoke('get-game-stats'),
   getGameSessions: () => ipcRenderer.invoke('get-game-sessions'),

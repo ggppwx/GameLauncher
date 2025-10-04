@@ -59,9 +59,24 @@ export class GameApi {
     return apiClient.invoke<{ success: boolean }>('setOverrideProcess', { gameId, overrideProcess });
   }
 
+  // Get game notes
+  async getGameNotes(gameId: string): Promise<string | null> {
+    return apiClient.invoke<string | null>('getGameNotes', gameId);
+  }
+
+  // Update game notes
+  async updateGameNotes(gameId: string, notes: string): Promise<{ success: boolean }> {
+    return apiClient.invoke<{ success: boolean }>('updateGameNotes', { gameId, notes });
+  }
+
+  // Remove a game
+  async removeGame(gameId: string): Promise<{ success: boolean }> {
+    return apiClient.invoke<{ success: boolean }>('removeGame', gameId);
+  }
+
   // Listen to scan progress
   onScanProgress(callback: (progress: ScanProgress) => void): void {
-    apiClient.onScanProgress((event, data) => callback(data));
+    apiClient.onScanProgress((_event, data) => callback(data));
   }
   
   // Remove scan progress listener

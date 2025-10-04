@@ -64,6 +64,9 @@ function setupDB() {
       if (!cols.has('overrideProcess')) {
         db.run(`ALTER TABLE games ADD COLUMN overrideProcess TEXT`);
       }
+      if (!cols.has('notes')) {
+        db.run(`ALTER TABLE games ADD COLUMN notes TEXT`);
+      }
     });
 
     // Create game_sessions table

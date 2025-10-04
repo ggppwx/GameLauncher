@@ -21,7 +21,7 @@ export interface UseGamesReturn {
   setSelectedTags: (tags: string[]) => void;
   setInstalledOnly: (value: boolean) => void;
   loadGames: () => Promise<void>;
-  scanSteamGames: () => Promise<void>;
+  // scanSteamGames: () => Promise<void>;
   importSteamGames: () => Promise<void>;
   launchGame: (game: Game) => Promise<void>;
   removeGame: (gameId: string) => Promise<void>;
@@ -61,39 +61,39 @@ export function useGames(): UseGamesReturn {
   }, [toast]);
 
   // Scan Steam games
-  const scanSteamGames = useCallback(async () => {
-    try {
-      setScanning(true);
-      setScanProgress(null);
+  // const scanSteamGames = useCallback(async () => {
+  //   try {
+  //     setScanning(true);
+  //     setScanProgress(null);
       
-      // Set up progress listener
-      gameApi.onScanProgress((progress) => {
-        setScanProgress(progress);
-      });
+  //     // Set up progress listener
+  //     gameApi.onScanProgress((progress) => {
+  //       setScanProgress(progress);
+  //     });
 
-      const newGames = await gameApi.detectSteamGames();
+  //     const newGames = await gameApi.detectSteamGames();
       
-      // Reload games after scan
-      await loadGames();
+  //     // Reload games after scan
+  //     await loadGames();
       
-      toast({
-        title: "Scan Complete",
-        description: `Found ${newGames.length} games`,
-      });
+  //     toast({
+  //       title: "Scan Complete",
+  //       description: `Found ${newGames.length} games`,
+  //     });
       
-    } catch (error) {
-      console.error('Error scanning Steam games:', error);
-      toast({
-        title: "Scan Failed",
-        description: error instanceof Error ? error.message : "Failed to scan Steam games",
-        variant: "destructive"
-      });
-    } finally {
-      setScanning(false);
-      setScanProgress(null);
-      gameApi.removeScanProgressListener();
-    }
-  }, [loadGames, toast]);
+  //   } catch (error) {
+  //     console.error('Error scanning Steam games:', error);
+  //     toast({
+  //       title: "Scan Failed",
+  //       description: error instanceof Error ? error.message : "Failed to scan Steam games",
+  //       variant: "destructive"
+  //     });
+  //   } finally {
+  //     setScanning(false);
+  //     setScanProgress(null);
+  //     gameApi.removeScanProgressListener();
+  //   }
+  // }, [loadGames, toast]);
 
   // Import Steam games (from account) - non-blocking
   const importSteamGames = useCallback(async () => {
@@ -176,8 +176,10 @@ export function useGames(): UseGamesReturn {
   // Remove a game
   const removeGame = useCallback(async (gameId: string) => {
     try {
-      // For now, we'll just remove from local state
-      // In the future, this could call an API to remove from database
+      // Call API to remove from database
+      await gameApi.removeGame(gameId);
+      
+      // Remove from local state
       setGames(prev => prev.filter(game => game.id !== gameId));
       
       toast({
@@ -243,7 +245,7 @@ export function useGames(): UseGamesReturn {
     setSelectedTags,
     setInstalledOnly,
     loadGames,
-    scanSteamGames,
+    // scanSteamGames,
     importSteamGames,
     launchGame,
     removeGame,

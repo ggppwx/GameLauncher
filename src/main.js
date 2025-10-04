@@ -55,26 +55,26 @@ app.whenReady().then(() => {
   // Initialize services
   const configService = new ConfigService();
   const gameSessionService = new GameSessionService(db);
+  const gameService = new GameService(db, configService, gameSessionService, null);
   // Use GameMonitorService with config for game timer notifications
-  gameMonitorService = new GameMonitorService(db, gameSessionService, configService);
-  const gameService = new GameService(db, configService, gameSessionService, gameMonitorService);
+  gameMonitorService = new GameMonitorService(db, gameSessionService, configService, gameService);
+  // Update gameService with the monitor service
+  gameService.gameMonitorService = gameMonitorService;
   const tagService = new TagService(db);
   const statisticsService = new StatisticsService(db);
   
   // Setup IPC handlers with services
   setupIPC({ gameService, tagService, configService, statisticsService });
   
-  // Refresh Steam playtime and last play on startup (non-blocking)
-  gameService.refreshSteamGames().catch(err => console.error('Startup Steam refresh failed:', err));
+  // Refresh Steam playtime and last play on startup (completely non-blocking)
+  // This runs in the background and doesn't affect UI loading
+  setImmediate(() => {
+    gameService.refreshSteamGames().catch(err => console.error('Startup Steam refresh failed:', err));
+  });
 
-  // When a session ends, refresh Steam games and notify renderer to reload list
+  // When a session ends, notify renderer to reload list
   try {
     gameSessionService.on('sessionEnded', async ({ gameId, sessionId, gameTime }) => {
-      try {
-        await gameService.refreshSteamGames();
-      } catch (e) {
-        console.error('Steam refresh after session end failed:', e);
-      }
       try {
         const win = BrowserWindow.getAllWindows()[0];
         if (win && !win.isDestroyed()) {

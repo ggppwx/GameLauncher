@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GameLauncher } from './renderer/components/GameLauncher'
 import { Statistics } from './renderer/components/Statistics'
+import { Recommendation } from './renderer/components/Recommendation'
 import { TabNavigation } from './renderer/components/TabNavigation'
 import { Toaster } from './renderer/components/ui/toaster'
 import { useToast } from './renderer/components/ui/use-toast'
 
 function App() {
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<'library' | 'statistics'>('library')
+  const [activeTab, setActiveTab] = useState<'library' | 'recommendation' | 'statistics'>('library')
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
@@ -35,6 +36,16 @@ function App() {
               transition={{ duration: 0.3 }}
             >
               <GameLauncher />
+            </motion.div>
+          ) : activeTab === 'recommendation' ? (
+            <motion.div
+              key="recommendation"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Recommendation />
             </motion.div>
           ) : (
             <motion.div

@@ -13,6 +13,7 @@ export interface ElectronAPI {
   setSteamPath: (steamPath: string) => Promise<{ success: boolean }>
   getGames: () => Promise<Game[]>
   addOrUpdateGame: (game: Game) => Promise<{ success: boolean }>
+  removeGame: (gameId: string) => Promise<{ success: boolean }>
   getThumbnailPath: (appId: string) => Promise<string | null>
   getCoverImage: (appId: string) => Promise<string | null>
   setOverrideProcess: (data: { gameId: string; overrideProcess: string }) => Promise<{ success: boolean }>
@@ -24,6 +25,8 @@ export interface ElectronAPI {
   getTags: () => Promise<Tag[]>
   addTag: (tag: { name: string; color?: string; isDefault?: boolean }) => Promise<Tag>
   addTagsToGame: (gameId: string, tagNames: string[]) => Promise<{ success: boolean }>
+  getGameNotes: (gameId: string) => Promise<string | null>
+  updateGameNotes: (data: { gameId: string; notes: string }) => Promise<{ success: boolean }>
   // Session-related APIs
   getGameStats: () => Promise<GameStats>
   getGameSessions: () => Promise<GameSession[]>
