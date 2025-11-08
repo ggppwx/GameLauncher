@@ -27,7 +27,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getGames: () => ipcRenderer.invoke('get-games'),
   addOrUpdateGame: (game) => ipcRenderer.invoke('add-or-update-game', game),
   removeGame: (gameId) => ipcRenderer.invoke('remove-game', gameId),
+  retrieveMissingData: (gameId) => ipcRenderer.invoke('retrieve-missing-data', gameId),
+  refreshAllMissingData: () => ipcRenderer.invoke('refresh-all-missing-data'),
   getThumbnailPath: (appId) => ipcRenderer.invoke('get-thumbnail-path', appId),
+  // Recommendation API
+  getSmartRecommendations: (count, diversityFactor) => ipcRenderer.invoke('get-smart-recommendations', count, diversityFactor),
+  recordRecommendationLaunch: (gameId) => ipcRenderer.invoke('record-recommendation-launch', gameId),
   getCoverImage: (appId) => ipcRenderer.invoke('get-cover-image', appId),
   onScanProgress: (callback) => ipcRenderer.on('scan-progress', callback),
   removeScanProgressListener: () => ipcRenderer.removeAllListeners('scan-progress'),

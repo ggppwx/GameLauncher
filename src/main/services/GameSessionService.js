@@ -2,9 +2,10 @@ const crypto = require('crypto');
 const EventEmitter = require('events');
 
 class GameSessionService extends EventEmitter {
-  constructor(db) {
+  constructor(db, recommendationService = null) {
     super();
     this.db = db;
+    this.recommendationService = recommendationService;
     this.activeSessions = new Map(); // Track active sessions in memory
   }
 
@@ -107,6 +108,14 @@ class GameSessionService extends EventEmitter {
                           }
                         }
                         try { this.emit('sessionEnded', { gameId: row.game_id, sessionId: row.session_id, gameTime, deleted: false }); } catch (_) {}
+                        
+                        // Update recommendation model with session data
+                        if (this.recommendationService) {
+                          this.recommendationService.updateFromSession(sessionId).catch(err => 
+                            console.error('Error updating recommendation model:', err)
+                          );
+                        }
+                        
                         resolve({ 
                           sessionId: row.session_id,
                           startTime: row.start_time,

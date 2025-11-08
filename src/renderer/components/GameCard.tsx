@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Badge } from './ui/badge'
 import { Game } from '../types/game'
-import { Play, X, Tag as TagIcon } from 'lucide-react'
+import { Play, X, Tag as TagIcon, RefreshCw } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { TagDialog } from './TagDialog'
 import { useTags } from '../hooks/useTags'
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { GameDetailsDialog } from './GameDetailsDialog'
+import { useToast } from './ui/use-toast'
 
 interface GameCardProps {
   game: Game
@@ -18,49 +19,36 @@ interface GameCardProps {
   onRemove: (gameId: string) => void
   onTagsUpdated: () => void
   sortBy?: 'name' | 'lastPlay' | 'timePlayed'
+  hybridScore?: number
+  expectedReward?: number
 }
 
-export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: GameCardProps) {
-  const isSteam = game.type === 'steam'
+export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy, hybridScore, expectedReward }: GameCardProps) {
   const isInstalled = Boolean(game.process || game.path)
-  const [coverPath, setCoverPath] = useState<string | null>(null)
-  const [imageError, setImageError] = useState(false)
+  
+  // Debug logging for hybrid score
+  if (hybridScore !== undefined) {
+    console.log(`GameCard for ${game.name}: hybridScore = ${hybridScore}`);
+  }
   const [showTagDialog, setShowTagDialog] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [showOverrideDialog, setShowOverrideDialog] = useState(false)
   const [processInput, setProcessInput] = useState('')
   const [showDetails, setShowDetails] = useState(false)
   const [suppressClicksUntil, setSuppressClicksUntil] = useState(0)
+  const [isRetrievingData, setIsRetrievingData] = useState(false)
+  
+  const { toast } = useToast()
   
   // Use the tags hook
   const { tags } = useTags()
-
-  // Load cover image for Steam games
-  useEffect(() => {
-    if (isSteam && game.appid) {
-      console.log('Loading cover image for game:', game.name, 'appid:', game.appid);
-      setImageError(false); // Reset error state on appid change
-
-      const appId = game.appid; // Store in local variable to satisfy TypeScript
-
-      gameApi.getCoverImage(appId)
-        .then(path => {
-          console.log('Cover image path received:', path);
-          if (path) {
-            setCoverPath(path);
-          }
-        })
-        .catch(error => {
-          console.error('Error loading cover image:', error);
-        });
-    }
-  }, [game.appid, isSteam]);
 
   // Get tags for this specific game
   const gameTags = tags.filter(tag => game.tags?.includes(tag.name))
 
   // Use utility functions for display
-  const displayImage = coverPath;
+  // Use coverImage from database - it's already downloaded and stored during import
+  const displayImage = game.coverImage;
   const displayName = getGameDisplayName(game);
   const typeDisplayName = getGameTypeDisplayName(game.type);
 
@@ -106,6 +94,39 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
     onTagsUpdated()
   }
 
+  const handleRetrieveMissingData = async () => {
+    setContextMenu(null)
+    
+    if (game.type !== 'steam') {
+      toast({
+        title: 'Not Supported',
+        description: 'Only Steam games are supported for metadata retrieval',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setIsRetrievingData(true)
+    try {
+      const result = await gameApi.retrieveMissingData(game.id)
+      toast({
+        title: 'Success',
+        description: result.message || 'Metadata retrieved successfully'
+      })
+      // Refresh the game list to show updated data
+      onTagsUpdated()
+    } catch (error: any) {
+      console.error('Error retrieving missing data:', error)
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to retrieve metadata',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsRetrievingData(false)
+    }
+  }
+
   const footerText = getFooterText()
 
   return (
@@ -124,7 +145,7 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
         <div
           className={`game-card-steam relative overflow-hidden ${!isInstalled ? 'opacity-60' : ''}`}
           style={{ 
-            backgroundImage: displayImage && !imageError ? `url(local-file://${displayImage.replace(/\\/g, '/')})` : 'none',
+            backgroundImage: displayImage ? `url(local-file://${displayImage.replace(/\\/g, '/')})` : 'none',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -227,13 +248,23 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
         {/* Footer below cover without overlap (always rendered) */}
         <div className="w-full bg-gray-800/80 text-white text-[10px] px-3 py-2 min-h-[28px] -mt-px">
           {footerText || ''}
+          {hybridScore !== undefined && expectedReward !== undefined && (
+            <div className="mt-1 flex justify-center gap-2">
+              <Badge variant="secondary" className="text-[10px] px-2 py-1 bg-purple-600 text-white font-bold border border-purple-400">
+                Score: {hybridScore.toFixed(3)}
+              </Badge>
+              <Badge variant="secondary" className="text-[10px] px-2 py-1 bg-blue-600 text-white font-bold border border-blue-400">
+                Reward: {expectedReward.toFixed(3)}
+              </Badge>
+            </div>
+          )}
         </div>
       </motion.div>
 
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[150px]"
+          className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[180px]"
           style={{
             left: contextMenu.x,
             top: contextMenu.y,
@@ -256,6 +287,16 @@ export function GameCard({ game, onLaunch, onRemove, onTagsUpdated, sortBy }: Ga
           >
             Set Process Override
           </button>
+          {game.type === 'steam' && (
+            <button
+              onClick={handleRetrieveMissingData}
+              disabled={isRetrievingData}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRetrievingData ? 'animate-spin' : ''}`} />
+              {isRetrievingData ? 'Retrieving...' : 'Retrieve Missing Data'}
+            </button>
+          )}
         </div>
       )}
 

@@ -11,19 +11,6 @@ function setupGameHandlers(gameService) {
     return gameService.addOrUpdateGame(game);
   });
 
-  // Detect Steam games
-  // ipcMain.handle('detect-steam-games', async (event) => {
-  //   try {
-  //     const progressCallback = (data) => {
-  //       event.sender.send('scan-progress', data);
-  //     };
-      
-  //     return await gameService.detectSteamGames(progressCallback);
-  //   } catch (error) {
-  //     console.error('Error in detect-steam-games handler:', error);
-  //     throw error;
-  //   }
-  // });
 
   // Import Steam games via Steam Web API
   ipcMain.handle('import-steam-games', async (event, rescan = true) => {
@@ -81,6 +68,21 @@ function setupGameHandlers(gameService) {
   // Remove game
   ipcMain.handle('remove-game', (event, gameId) => {
     return gameService.removeGame(gameId);
+  });
+
+  // Retrieve missing data for a game
+  ipcMain.handle('retrieve-missing-data', (event, gameId) => {
+    return gameService.retrieveMissingData(gameId);
+  });
+
+  // Refresh all missing data for installed games
+  ipcMain.handle('refresh-all-missing-data', async (event) => {
+    try {
+      return await gameService.refreshAllMissingData();
+    } catch (error) {
+      console.error('Error in refresh-all-missing-data handler:', error);
+      throw error;
+    }
   });
 }
 

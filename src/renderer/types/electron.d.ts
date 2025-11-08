@@ -14,6 +14,8 @@ export interface ElectronAPI {
   getGames: () => Promise<Game[]>
   addOrUpdateGame: (game: Game) => Promise<{ success: boolean }>
   removeGame: (gameId: string) => Promise<{ success: boolean }>
+  retrieveMissingData: (gameId: string) => Promise<{ success: boolean; message: string }>
+  refreshAllMissingData: () => Promise<{ success: boolean; total: number; successful: number; failed: number; errors?: { game: string; error: string }[] }>
   getThumbnailPath: (appId: string) => Promise<string | null>
   getCoverImage: (appId: string) => Promise<string | null>
   setOverrideProcess: (data: { gameId: string; overrideProcess: string }) => Promise<{ success: boolean }>
@@ -46,6 +48,9 @@ export interface ElectronAPI {
   getMonthPlaytimeBreakdown: (year: number, month: number) => Promise<{ year: number; month: number; days: { date: string; total: number; games: { gameId: string; gameName: string; seconds: number }[] }[] }>
   getThisWeekSummary: () => Promise<{ totalPlaytime: number; gamesPlayed: number }>
   getWeeklyPlaytimeLast8Weeks: () => Promise<{ weekStart: string; totalPlaytime: number }[]>
+  // Recommendation APIs
+  getSmartRecommendations: (count?: number, diversityFactor?: number) => Promise<{ game: Game; hybridScore: number; expectedReward: number }[]>
+  recordRecommendationLaunch: (gameId: string) => Promise<void>
 }
 
 declare global {

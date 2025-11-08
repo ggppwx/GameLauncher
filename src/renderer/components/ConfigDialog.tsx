@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { FolderOpen, Save, X } from 'lucide-react'
+import { FolderOpen, Save, X, RefreshCw } from 'lucide-react'
 import { useToast } from './ui/use-toast'
+import { gameApi } from '../services/gameApi'
 
 interface ConfigDialogProps {
   open: boolean
@@ -17,6 +18,7 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
   const [steamUserId, setSteamUserId] = useState('')
   const [loading, setLoading] = useState(false)
   const [gameTimerMinutes, setGameTimerMinutes] = useState<number>(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -81,6 +83,34 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRefreshAllMetadata = async () => {
+    if (isRefreshing) return
+
+    setIsRefreshing(true)
+    
+    toast({
+      title: 'Starting Refresh',
+      description: 'Processing all installed Steam games. This may take a while...'
+    })
+
+    try {
+      const result = await gameApi.refreshAllMissingData()
+      setIsRefreshing(false)
+      toast({
+        title: 'Refresh Completed',
+        description: `Updated ${result.successful} of ${result.total} games${result.failed > 0 ? ` (${result.failed} failed)` : ''}`
+      })
+    } catch (error: any) {
+      console.error('Error refreshing metadata:', error)
+      setIsRefreshing(false)
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to refresh metadata',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -212,6 +242,24 @@ export function ConfigDialog({ open, onOpenChange }: ConfigDialogProps) {
                 placeholder="0"
               />
               <p className="text-sm text-gray-500">Set reminder interval in minutes. 0 disables timer.</p>
+            </div>
+          </div>
+
+          <div className="space-y-2 border-t pt-4">
+            <Label>Metadata Management</Label>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                onClick={handleRefreshAllMetadata}
+                disabled={isRefreshing}
+                className="w-full"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh Missing Data'}
+              </Button>
+              <p className="text-xs text-gray-500">
+                Retrieves missing metadata for all installed Steam games. Waits 3 seconds between requests to avoid rate limiting.
+              </p>
             </div>
           </div>
 

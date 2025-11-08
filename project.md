@@ -100,8 +100,8 @@ follow typical electron app structure
 - you can skip and it will show you next 3 games 
 - for each game session. 
 
-### Smart recommendation
-- method: bandit 
+### Smart recommendation (phase 1. simple working version)
+- [X] method: bandit 
 - only used for current user
 - gaming session data already in game_sessions table 
   - we can derived a few signals from the table 
@@ -118,10 +118,33 @@ follow typical electron app structure
   - Launch, 15–60 min → 0.7
   - Launch, ≥ 60 min and no crash → 1.0
 - storage
-  - we already have the existing table game_sessions
+  - we already have the existing table game_sessions to save the gaming history 
   - use the same sqlite db to save the ML data 
+- code structure 
+  - create a separte module/dir for the this ML recommendation 
+  - prefer writing new functions instead of modifyiing current functions  
+  - create a simple LinUCB lib to calculate the game score 
+  - apply a simple diversify rule to pick games with similarity (MMR)
+    - for simiplity, the sim(i, j) function only compares the Genre/tag of the game (genres/tags in the db) 
+
+### smart recommandation phase 2
+- now I would like to build a hybrind contextural banidt. and put the game's feature into the ranking 
+  - features to have for now are following, we can get them from db(games table)
+    - genras
+    - tags
+    - playtime
+    - timeLastPlay
+  - need to integrate game feature into "warm start" and live path 
+  
 
 
+## Notes 
+- [X] add a new tab after statistics called notes 
+  - [X] It will show up all the notes from the game
+  - [X] breakdown the notes by game, each game's note is a section 
+    - the secion has the name, last played time 
+    - name, timeLastPlay, playtime, then notes
+  - [X] the notes are sorted by recent played games 
 
 
 

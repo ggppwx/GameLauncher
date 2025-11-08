@@ -108,252 +108,6 @@ class GameService {
     });
   }
 
-  // async detectSteamGames(progressCallback) {
-  //   try {
-  //     console.log('Starting Steam game detection...');
-
-  //     const config = await this.configService.getConfig();
-  //     const steamPath = config.steamPath;
-
-  //     if (!steamPath) {
-  //       throw new Error('Steam path not configured');
-  //     }
-
-  //     console.log('Steam path:', steamPath);
-
-  //     const libraryFoldersPath = path.join(steamPath, 'steamapps', 'libraryfolders.vdf');
-  //     console.log('Library folders path:', libraryFoldersPath);
-
-  //     if (!fs.existsSync(libraryFoldersPath)) {
-  //       throw new Error('libraryfolders.vdf not found');
-  //     }
-
-  //     const libraryFoldersContent = fs.readFileSync(libraryFoldersPath, 'utf8');
-  //     const libraryPaths = [];
-
-  //     // Parse libraryfolders.vdf to get library paths
-  //     const pathMatches = libraryFoldersContent.match(/"path"\s+"([^"]+)"/g);
-  //     if (pathMatches) {
-  //       pathMatches.forEach(match => {
-  //         const pathMatch = match.match(/"path"\s+"([^"]+)"/);
-  //         if (pathMatch) {
-  //           const libraryPath = pathMatch[1];
-  //           libraryPaths.push(libraryPath);
-  //           console.log('Found library path:', libraryPath);
-  //         }
-  //       });
-  //     }
-
-  //     const games = [];
-
-  //     // Process each library path
-  //     for (const libraryPath of libraryPaths) {
-  //       const steamappsPath = path.join(libraryPath, 'steamapps');
-  //       if (!fs.existsSync(steamappsPath)) continue;
-
-  //       const appManifestFiles = fs.readdirSync(steamappsPath)
-  //         .filter(file => file.startsWith('appmanifest_') && file.endsWith('.acf'));
-
-  //       console.log(`Found ${appManifestFiles.length} games in ${libraryPath}`);
-
-  //       // Process games in batches to avoid blocking
-  //       const batchSize = 3;
-  //       for (let i = 0; i < appManifestFiles.length; i += batchSize) {
-  //         const batch = appManifestFiles.slice(i, i + batchSize);
-
-  //         // Process batch concurrently
-  //         const batchPromises = batch.map(async (manifestFile) => {
-  //           try {
-  //             const manifestPath = path.join(steamappsPath, manifestFile);
-  //             const manifestContent = fs.readFileSync(manifestPath, 'utf8');
-
-  //             const appIdMatch = manifestContent.match(/"appid"\s+"(\d+)"/);
-  //             const nameMatch = manifestContent.match(/"name"\s+"([^"]+)"/);
-
-  //             if (appIdMatch && nameMatch) {
-  //               const appId = appIdMatch[1];
-  //               const name = nameMatch[1];
-
-  //               console.log(`Processing game: ${name} (${appId})`);
-
-  //               const appInfo = {
-  //                 id: `steam-${appId}`,
-  //                 appid: appId,
-  //                 name: name,
-  //                 path: libraryPath,
-  //                 type: 'steam'
-  //               };
-
-  //               // Extract process information from manifest
-  //               const processName = extractProcessFromManifest(manifestPath);
-  //               if (processName) {
-  //                 appInfo.process = processName;
-  //                 console.log(`Found process for ${appInfo.name}: ${processName}`);
-  //               } else {
-  //                 console.log(`No process found for ${appInfo.name} in manifest: ${manifestPath}`);
-  //               }
-
-  //               // Fetch metadata and download images (with timeout)
-  //               let thumbnailPath = null;
-  //               let coverPath = null;
-  //               let metadata = null;
-
-  //               if (appInfo.type === 'steam') {
-  //                 try {
-  //                   // Set a timeout for metadata fetching
-  //                   const metadataPromise = getGameMetadata(appInfo.appid);
-  //                   const timeoutPromise = new Promise((_, reject) =>
-  //                     setTimeout(() => reject(new Error('Metadata fetch timeout')), 15000)
-  //                   );
-
-  //                   metadata = await Promise.race([metadataPromise, timeoutPromise]);
-
-  //                   // Set a timeout for thumbnail downloading
-  //                   const thumbnailPromise = getOrDownloadThumbnail(appInfo.appid);
-  //                   const thumbnailTimeoutPromise = new Promise((_, reject) =>
-  //                     setTimeout(() => reject(new Error('Thumbnail download timeout')), 10000)
-  //                   );
-
-  //                   thumbnailPath = await Promise.race([thumbnailPromise, thumbnailTimeoutPromise]);
-
-  //                   // Set a timeout for cover image downloading (prefer local Steam cache if available)
-  //                   const steamCacheDir = path.join(steamPath, 'appcache', 'librarycache');
-  //                   const coverPromise = getOrDownloadCoverImage(appInfo.appid, steamCacheDir);
-  //                   const coverTimeoutPromise = new Promise((_, reject) =>
-  //                     setTimeout(() => reject(new Error('Cover download timeout')), 10000)
-  //                   );
-
-  //                   try {
-  //                     coverPath = await Promise.race([coverPromise, coverTimeoutPromise]);
-  //                     console.log(`Cover image result for ${appInfo.name}:`, coverPath);
-  //                   } catch (coverError) {
-  //                     console.log(`Cover image download failed for ${appInfo.name}:`, coverError.message);
-  //                     coverPath = null;
-  //                   }
-
-  //                   // Update appInfo with metadata
-  //                   if (metadata) {
-  //                     appInfo.description = metadata.description;
-  //                     appInfo.shortDescription = metadata.shortDescription;
-  //                     appInfo.genres = metadata.genres;
-  //                     appInfo.releaseDate = metadata.releaseDate;
-  //                     appInfo.developer = metadata.developer;
-  //                     appInfo.publisher = metadata.publisher;
-  //                     appInfo.metacritic = metadata.metacritic;
-  //                     appInfo.categories = metadata.categories;
-  //                     appInfo.platforms = metadata.platforms;
-  //                     appInfo.backgroundImage = metadata.backgroundImage;
-  //                     appInfo.headerImage = metadata.headerImage;
-  //                     appInfo.capsuleImage = metadata.capsuleImage;
-  //                     appInfo.capsuleImageV5 = metadata.capsuleImageV5;
-  //                     appInfo.backgroundRaw = metadata.backgroundRaw;
-  //                     appInfo.coverImage = metadata.coverImage;
-  //                     appInfo.isFree = metadata.isFree;
-  //                     appInfo.requiredAge = metadata.requiredAge;
-  //                     appInfo.supportedLanguages = metadata.supportedLanguages;
-  //                     appInfo.website = metadata.website;
-  //                     appInfo.recommendations = metadata.recommendations;
-  //                   }
-  //                 } catch (error) {
-  //                   console.error(`Failed to fetch metadata/assets for ${appInfo.name}:`, error);
-  //                 }
-  //               }
-
-  //               // Save to DB
-  //               await new Promise((resolve, reject) => {
-  //                 this.db.run(
-  //                   `INSERT INTO games (id, appid, name, path, type, thumbnail, process, description, shortDescription, genres, releaseDate, developer, publisher, metacritic, categories, platforms, backgroundImage, headerImage, capsuleImage, capsuleImageV5, backgroundRaw, coverImage, isFree, requiredAge, supportedLanguages, website, recommendations, steamGridCover, steamGridHero, steamGridLogo, steamGridGameId)
-  //                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  //                     ON CONFLICT(id) DO UPDATE SET
-  //                       appid=excluded.appid, name=excluded.name, path=excluded.path, type=excluded.type,
-  //                       thumbnail=excluded.thumbnail, process=excluded.process, description=excluded.description, shortDescription=excluded.shortDescription,
-  //                       genres=excluded.genres, releaseDate=excluded.releaseDate, developer=excluded.developer,
-  //                       publisher=excluded.publisher, metacritic=excluded.metacritic, categories=excluded.categories,
-  //                       platforms=excluded.platforms, backgroundImage=excluded.backgroundImage, headerImage=excluded.headerImage,
-  //                       capsuleImage=excluded.capsuleImage, capsuleImageV5=excluded.capsuleImageV5, backgroundRaw=excluded.backgroundRaw,
-  //                       coverImage=excluded.coverImage, isFree=excluded.isFree, requiredAge=excluded.requiredAge, supportedLanguages=excluded.supportedLanguages,
-  //                       website=excluded.website, recommendations=excluded.recommendations, steamGridCover=excluded.steamGridCover,
-  //                       steamGridHero=excluded.steamGridHero, steamGridLogo=excluded.steamGridLogo, steamGridGameId=excluded.steamGridGameId`,
-  //                   [
-  //                     appInfo.id,
-  //                     appInfo.appid,
-  //                     appInfo.name,
-  //                     appInfo.path,
-  //                     appInfo.type,
-  //                     thumbnailPath,
-  //                     appInfo.process,
-  //                     appInfo.description,
-  //                     appInfo.shortDescription,
-  //                     appInfo.genres ? JSON.stringify(appInfo.genres) : null,
-  //                     appInfo.releaseDate,
-  //                     appInfo.developer,
-  //                     appInfo.publisher,
-  //                     appInfo.metacritic,
-  //                     appInfo.categories ? JSON.stringify(appInfo.categories) : null,
-  //                     appInfo.platforms ? JSON.stringify(appInfo.platforms) : null,
-  //                     appInfo.backgroundImage,
-  //                     appInfo.headerImage,
-  //                     appInfo.capsuleImage,
-  //                     appInfo.capsuleImageV5,
-  //                     appInfo.backgroundRaw,
-  //                     coverPath,
-  //                     appInfo.isFree ? 1 : 0,
-  //                     appInfo.requiredAge,
-  //                     appInfo.supportedLanguages,
-  //                     appInfo.website,
-  //                     appInfo.recommendations,
-  //                     appInfo.steamGridCover,
-  //                     appInfo.steamGridHero,
-  //                     appInfo.steamGridLogo,
-  //                     appInfo.steamGridGameId
-  //                   ],
-  //                   function (err) {
-  //                     if (err) reject(err);
-  //                     else resolve();
-  //                   }
-  //                 );
-  //               });
-
-  //               return appInfo;
-  //             }
-  //           } catch (error) {
-  //             console.error(`Error processing manifest file ${manifestFile}:`, error);
-  //             return null;
-  //           }
-  //         });
-
-  //         // Wait for batch to complete
-  //         const batchResults = await Promise.allSettled(batchPromises);
-  //         const validGames = batchResults
-  //           .filter(result => result.status === 'fulfilled' && result.value)
-  //           .map(result => result.value);
-
-  //         games.push(...validGames);
-
-  //         // Send progress update
-  //         if (progressCallback) {
-  //           progressCallback({
-  //             current: i + batch.length,
-  //             total: appManifestFiles.length,
-  //             library: path.basename(libraryPath),
-  //             gamesFound: games.length
-  //           });
-  //         }
-
-  //         // Small delay to prevent UI blocking
-  //         await new Promise(resolve => setTimeout(resolve, 100));
-  //       }
-  //     }
-
-  //     console.log(`Scan complete. Found ${games.length} games.`);
-  //     return games;
-
-  //   } catch (error) {
-  //     console.error('Error detecting Steam games:', error);
-  //     throw error;
-  //   }
-  // }
-
 
   async refreshSteamGames() {
     try {
@@ -365,8 +119,8 @@ class GameService {
         // Only update playtime and last played - no cover images or metadata
         await new Promise((resolve, reject) => {
           this.db.run(
-            'INSERT INTO games (id, appid, name, type, playtime, timeLastPlay) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET appid=excluded.appid, name=excluded.name, type=excluded.type, playtime=excluded.playtime, timeLastPlay=excluded.timeLastPlay',
-            [appInfo.id, appInfo.appid, appInfo.name, appInfo.type, appInfo.playtime, appInfo.timeLastPlay],
+            'UPDATE games SET playtime = ?, timeLastPlay = ? WHERE id = ?',
+            [appInfo.playtime, appInfo.timeLastPlay, appInfo.id],
             function (err) { if (err) reject(err); else resolve(); }
           );
         });
@@ -475,7 +229,7 @@ class GameService {
         console.log('Post-process update failed:', e.message);
       }
 
-
+    // now process the overall games including not installed 
     try {
       const appInfos = await this.getAppInfosFromSteam();
       let results = [];
@@ -619,7 +373,7 @@ class GameService {
         }
 
         // delay 1s
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       return results;
@@ -673,7 +427,16 @@ class GameService {
     return new Promise((resolve, reject) => {
       this.db.get('SELECT * FROM games WHERE id = ?', [gameId], (err, row) => {
         if (err) reject(err);
-        else resolve(row);
+        else {
+          if (row) {
+            // Parse JSON fields from database
+            row.tags = row.tags ? JSON.parse(row.tags) : [];
+            row.genres = row.genres ? JSON.parse(row.genres) : [];
+            row.categories = row.categories ? JSON.parse(row.categories) : [];
+            row.platforms = row.platforms ? JSON.parse(row.platforms) : null;
+          }
+          resolve(row);
+        }
       });
     });
   }
@@ -736,7 +499,7 @@ class GameService {
 
       for (let i = 0; i < gamesList.length; i++) {
         const g = gamesList[i];
-        console.log('===>Steam API game:', g);
+        // console.log('===>Steam API game:', g);
 
         const appId = String(g.appid);
         const name = g.name || `App ${appId}`;
@@ -760,6 +523,176 @@ class GameService {
       return [];
     }
    }
+
+   async retrieveMissingData(gameId) {
+    try {
+      // Get existing game data
+      const game = await this.getGameById(gameId);
+      if (!game) {
+        throw new Error('Game not found');
+      }
+
+      // Only works for Steam games
+      if (game.type !== 'steam' || !game.appid) {
+        throw new Error('Only Steam games are supported');
+      }
+
+      console.log(`Retrieving missing data for ${game.name} (AppID: ${game.appid})...`);
+
+      // Fetch fresh metadata from Steam
+      const metadata = await getGameMetadata(game.appid);
+      if (!metadata) {
+        throw new Error('Failed to fetch metadata from Steam');
+      }
+
+      // Debug logging for genres
+      console.log(`[${game.name}] Metadata genres:`, metadata.genres);
+      console.log(`[${game.name}] Metadata genres type:`, typeof metadata.genres);
+      console.log(`[${game.name}] Metadata genres is array:`, Array.isArray(metadata.genres));
+      console.log(`[${game.name}] Metadata genres stringified:`, JSON.stringify(metadata.genres));
+
+      // Try to get cover image
+      let coverPath = game.coverImage;
+      if (!coverPath) {
+        try {
+          coverPath = await getOrDownloadCoverImage(game.appid);
+        } catch (err) {
+          console.log('Cover image download failed:', err.message);
+        }
+      }
+
+      // Update database with new metadata
+      await new Promise((resolve, reject) => {
+        this.db.run(
+          `UPDATE games SET
+            description = ?,
+            shortDescription = ?,
+            genres = ?,
+            releaseDate = ?,
+            developer = ?,
+            publisher = ?,
+            metacritic = ?,
+            categories = ?,
+            platforms = ?,
+            backgroundImage = ?,
+            headerImage = ?,
+            capsuleImage = ?,
+            capsuleImageV5 = ?,
+            backgroundRaw = ?,
+            coverImage = ?,
+            isFree = ?,
+            requiredAge = ?,
+            supportedLanguages = ?,
+            website = ?,
+            recommendations = ?
+          WHERE id = ?`,
+          [
+            metadata.description,
+            metadata.shortDescription,
+            metadata.genres ? JSON.stringify(metadata.genres) : null,
+            metadata.releaseDate,
+            metadata.developer,
+            metadata.publisher,
+            metadata.metacritic,
+            metadata.categories ? JSON.stringify(metadata.categories) : null,
+            metadata.platforms ? JSON.stringify(metadata.platforms) : null,
+            metadata.backgroundImage,
+            metadata.headerImage,
+            metadata.capsuleImage,
+            metadata.capsuleImageV5,
+            metadata.backgroundRaw,
+            coverPath,
+            metadata.isFree ? 1 : 0,
+            metadata.requiredAge,
+            metadata.supportedLanguages,
+            metadata.website,
+            metadata.recommendations,
+            gameId
+          ],
+          function (err) {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+
+      // Verify what was saved to the database (raw value)
+      const rawRow = await new Promise((resolve, reject) => {
+        this.db.get('SELECT genres FROM games WHERE id = ?', [gameId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      console.log(`[${game.name}] Raw genres value in DB:`, rawRow.genres);
+      
+      // Get parsed game data
+      const savedGame = await this.getGameById(gameId);
+      console.log(`[${game.name}] Parsed genres from DB:`, savedGame.genres);
+      console.log(`[${game.name}] Parsed genres type:`, typeof savedGame.genres);
+      console.log(`[${game.name}] Parsed genres is array:`, Array.isArray(savedGame.genres));
+
+      console.log(`Successfully updated metadata for ${game.name}`);
+      return { success: true, message: 'Metadata updated successfully' };
+
+    } catch (error) {
+      console.error('Error retrieving missing data:', error);
+      throw error;
+    }
+  }
+
+  async refreshAllMissingData() {
+    try {
+      // Get all installed Steam games
+      const allGames = await this.getAllGames();
+      const steamGames = allGames.filter(game => 
+        game.type === 'steam' && 
+        game.appid && 
+        (game.process || game.path) // Only installed games
+      );
+
+      console.log(`Starting bulk metadata refresh for ${steamGames.length} installed Steam games...`);
+
+      let successful = 0;
+      let failed = 0;
+      const errors = [];
+
+      for (let i = 0; i < steamGames.length; i++) {
+        const game = steamGames[i];
+        
+        try {
+          await this.retrieveMissingData(game.id);
+          successful++;
+          console.log(`[${i + 1}/${steamGames.length}] Updated: ${game.name}`);
+
+        } catch (error) {
+          failed++;
+          errors.push({ game: game.name, error: error.message });
+          console.error(`[${i + 1}/${steamGames.length}] Failed: ${game.name} - ${error.message}`);
+        }
+
+        // Wait 3 seconds between requests to avoid rate limiting (except for the last one)
+        if (i < steamGames.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+
+      const result = {
+        success: true,
+        total: steamGames.length,
+        successful,
+        failed,
+        errors: errors.length > 0 ? errors : undefined
+      };
+
+      console.log('Bulk metadata refresh completed:', result);
+
+      return result;
+
+    } catch (error) {
+      console.error('Error in bulk metadata refresh:', error);
+      throw error;
+    }
+  }
 
 }
 

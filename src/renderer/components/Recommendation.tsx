@@ -1,55 +1,76 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { GameCard } from './GameCard'
 import { Button } from './ui/button'
-import { Shuffle, Sparkles } from 'lucide-react'
+import { Shuffle, Sparkles, Brain } from 'lucide-react'
 import { useGames } from '../hooks/useGames'
+import { recommendationApi, RecommendationWithScore } from '../services/recommendationApi'
+import { Game } from '../types/game'
 
 export function Recommendation() {
-  const { games, launchGame, removeGame, refreshGames } = useGames()
-  const [seed, setSeed] = useState(0)
+  const { launchGame: originalLaunchGame, removeGame, refreshGames } = useGames()
+  const [recommendations, setRecommendations] = useState<RecommendationWithScore[]>([])
+  const [loading, setLoading] = useState(true)
+  const [installedGamesCount, setInstalledGamesCount] = useState(0)
 
-  // Get 3 random games using a deterministic shuffle based on seed
-  const randomGames = useMemo(() => {
-    if (games.length === 0) return []
-    
-    // Filter to only installed games (games with process or path)
-    const installedGames = games.filter(g => Boolean(g.process || g.path))
-    
-    if (installedGames.length === 0) return []
-    
-    // Create a copy of installed games array
-    const shuffled = [...installedGames]
-    
-    // Simple seeded random function (Linear Congruential Generator)
-    let random = seed
-    const seededRandom = () => {
-      random = (random * 9301 + 49297) % 233280
-      return random / 233280
+  // Load smart recommendations
+  const loadRecommendations = async () => {
+    setLoading(true)
+    try {
+      const recs = await recommendationApi.getSmartRecommendations(5)
+      console.log('Received recommendations:', recs)
+      setRecommendations(recs)
+    } catch (error) {
+      console.error('Error loading recommendations:', error)
+      setRecommendations([])
+    } finally {
+      setLoading(false)
     }
+  }
+
+  // Initial load
+  useEffect(() => {
+    loadRecommendations()
     
-    // Fisher-Yates shuffle with seeded random
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(seededRandom() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-    }
-    
-    // Return first 3 games
-    return shuffled.slice(0, 3)
-  }, [games, seed])
+    // Get installed games count
+    window.electronAPI.getGames().then(games => {
+      const installedCount = games.filter(g => Boolean(g.process || g.path)).length
+      setInstalledGamesCount(installedCount)
+    })
+  }, [])
 
   const handleSkip = () => {
-    setSeed(prev => prev + 1)
+    loadRecommendations()
+  }
+
+  // Wrap launch game to record recommendation feedback
+  const launchGame = async (game: Game) => {
+    // Record the launch
+    await recommendationApi.recordLaunch(game.id)
+    // Launch the game
+    await originalLaunchGame(game)
   }
 
   const handleTagsUpdated = () => {
     refreshGames()
   }
 
-  // Check if there are any installed games
-  const installedGamesCount = games.filter(g => Boolean(g.process || g.path)).length
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex-1 flex items-center justify-center p-8"
+      >
+        <div className="text-center">
+          <Brain className="w-12 h-12 text-white/80 animate-pulse mx-auto mb-4" />
+          <p className="text-white/70">Analyzing your gaming patterns...</p>
+        </div>
+      </motion.div>
+    )
+  }
 
-  if (games.length === 0 || installedGamesCount === 0) {
+  if (installedGamesCount === 0 || recommendations.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -73,7 +94,7 @@ export function Recommendation() {
             transition={{ delay: 0.3 }}
             className="text-2xl font-bold text-white mb-2"
           >
-            {games.length === 0 ? "No Games Available" : "No Installed Games"}
+            {installedGamesCount === 0 ? "No Installed Games" : "No Recommendations Available"}
           </motion.h3>
           
           <motion.p
@@ -82,9 +103,9 @@ export function Recommendation() {
             transition={{ delay: 0.4 }}
             className="text-white/80 max-w-md mx-auto"
           >
-            {games.length === 0 
-              ? "Add some games to your library first to get recommendations!" 
-              : "No installed games found. Install some games to see recommendations!"}
+            {installedGamesCount === 0 
+              ? "Install some games to see smart recommendations!" 
+              : "Play some games to build your recommendation profile!"}
           </motion.p>
         </div>
       </motion.div>
@@ -103,11 +124,11 @@ export function Recommendation() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-              <Sparkles className="w-8 h-8 text-yellow-400" />
-              Recommended for You
+              <Brain className="w-8 h-8 text-purple-400" />
+              Smart Recommendations
             </h2>
             <p className="text-white/70 text-sm">
-              Discover games from your library you might want to play next
+              AI-powered suggestions based on your gaming habits and preferences
             </p>
           </div>
           
@@ -127,20 +148,22 @@ export function Recommendation() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className="grid gap-6 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] max-w-[800px]"
+        className="grid gap-6 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] max-w-[1400px]"
       >
-        {randomGames.map((game, index) => (
+        {recommendations.map((rec, index) => (
           <motion.div
-            key={`${game.id}-${seed}`}
+            key={`${rec.game.id}-${Date.now()}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.1 }}
           >
             <GameCard
-              game={game}
+              game={rec.game}
               onLaunch={launchGame}
               onRemove={removeGame}
               onTagsUpdated={handleTagsUpdated}
+              hybridScore={rec.hybridScore}
+              expectedReward={rec.expectedReward}
             />
           </motion.div>
         ))}
@@ -154,7 +177,7 @@ export function Recommendation() {
         className="mt-8 text-center"
       >
         <p className="text-white/50 text-sm">
-          Click "Skip" to see different recommendations from your library
+          Click "Skip" to refresh recommendations • Recommendations improve as you play more games
         </p>
       </motion.div>
     </div>

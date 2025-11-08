@@ -76,7 +76,6 @@ interface GameDetailsDialogProps {
 }
 
 export function GameDetailsDialog({ open, onOpenChange, game, onLaunch, onTagsUpdated }: GameDetailsDialogProps) {
-  const [coverPath, setCoverPath] = useState<string | null>(null)
   const [showTagDialog, setShowTagDialog] = useState(false)
   const [recentSessions, setRecentSessions] = useState<Array<{ id: string | number; gameId: string; gameName: string; startTime: string; endTime?: string | null; gameTime?: number | null }>>([])
 
@@ -92,22 +91,17 @@ export function GameDetailsDialog({ open, onOpenChange, game, onLaunch, onTagsUp
   }, [])
 
   useEffect(() => {
-    if (open && game.type === 'steam' && game.appid) {
-      gameApi.getCoverImage(game.appid).then(setCoverPath).catch(() => setCoverPath(null))
-    } else {
-      setCoverPath(null)
-    }
-  }, [open, game.type, game.appid])
-
-  useEffect(() => {
     if (!open) {
       setRecentSessions([])
       return
     }
     const load = async () => {
       try {
-        const sessions = await statisticsApi.getRecentSessions(50)
-        setRecentSessions((sessions || []).filter(s => s.gameId === game.id))
+        // Fetch more sessions to ensure we have enough for this specific game
+        const sessions = await statisticsApi.getRecentSessions(500)
+        const filteredSessions = (sessions || []).filter(s => s.gameId === game.id)
+        // Keep only the last 10 sessions for this game
+        setRecentSessions(filteredSessions.slice(0, 10))
       } catch (e) {
         console.error('Failed to load recent sessions', e)
         setRecentSessions([])
@@ -130,7 +124,7 @@ export function GameDetailsDialog({ open, onOpenChange, game, onLaunch, onTagsUp
         <div className="relative h-48 bg-black">
           <div
             className="absolute inset-0 bg-cover bg-center pointer-events-none"
-            style={{ backgroundImage: coverPath ? `url(local-file://${(coverPath || '').replace(/\\/g, '/')})` : undefined }}
+            style={{ backgroundImage: game.coverImage ? `url(local-file://${(game.coverImage || '').replace(/\\/g, '/')})` : undefined }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/20 pointer-events-none" />
           <div className="relative z-10 h-full flex items-center justify-between px-6">
@@ -138,10 +132,10 @@ export function GameDetailsDialog({ open, onOpenChange, game, onLaunch, onTagsUp
               <DialogHeader>
                 <DialogTitle className="text-white text-2xl">{game.name}</DialogTitle>
                 <DialogDescription className="text-white/70">
-                  {game.genres && game.genres.length ? game.genres.slice(0, 3).join(' • ') : game.type.toUpperCase()}
+                  {game.genres && Array.isArray(game.genres) && game.genres.length ? game.genres.slice(0, 3).join(' • ') : game.type.toUpperCase()}
                 </DialogDescription>
               </DialogHeader>
-              {game.tags && game.tags.length > 0 && (
+              {game.tags && Array.isArray(game.tags) && game.tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {game.tags.map(t => (
                     <Badge key={t} variant="secondary" className="bg-white/20 text-white border-0">{t}</Badge>
@@ -232,7 +226,7 @@ export function GameDetailsDialog({ open, onOpenChange, game, onLaunch, onTagsUp
               </div>
               <div className="space-y-2">
                 {recentSessions && recentSessions.length > 0 ? (
-                  recentSessions.slice(0, 10).map(s => (
+                  recentSessions.map(s => (
                     <div key={s.id} className="p-3 rounded border bg-gray-50 flex items-center justify-between">
                       <div>
                         <div className="text-sm text-gray-800">{statisticsApi.formatDate(s.startTime)}</div>

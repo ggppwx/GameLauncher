@@ -11,6 +11,7 @@ const TagService = require('./main/services/TagService');
 const GameSessionService = require('./main/services/GameSessionService');
 const GameMonitorService = require('./main/services/GameMonitorService');
 const StatisticsService = require('./main/services/StatisticsService');
+const RecommendationService = require('./main/ml/RecommendationService');
 
 // Import IPC setup
 const { setupIPC } = require('./main/ipc');
@@ -54,7 +55,8 @@ app.whenReady().then(() => {
   
   // Initialize services
   const configService = new ConfigService();
-  const gameSessionService = new GameSessionService(db);
+  const recommendationService = new RecommendationService(db);
+  const gameSessionService = new GameSessionService(db, recommendationService);
   const gameService = new GameService(db, configService, gameSessionService, null);
   // Use GameMonitorService with config for game timer notifications
   gameMonitorService = new GameMonitorService(db, gameSessionService, configService, gameService);
@@ -63,8 +65,13 @@ app.whenReady().then(() => {
   const tagService = new TagService(db);
   const statisticsService = new StatisticsService(db);
   
+  // Initialize recommendation service
+  recommendationService.initialize().catch(err => 
+    console.error('Failed to initialize recommendation service:', err)
+  );
+  
   // Setup IPC handlers with services
-  setupIPC({ gameService, tagService, configService, statisticsService });
+  setupIPC({ gameService, tagService, configService, statisticsService, recommendationService });
   
   // Refresh Steam playtime and last play on startup (completely non-blocking)
   // This runs in the background and doesn't affect UI loading

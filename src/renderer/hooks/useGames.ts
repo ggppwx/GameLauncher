@@ -125,7 +125,7 @@ export function useGames(): UseGamesReturn {
           } as any);
         } catch (_) {}
       });
-      const newGames = await gameApi.importSteamGames();
+      const newGames = await gameApi.importSteamGames(false); //TODO: rescan should be false
       await loadGames();
       try {
         loadingToast.update({

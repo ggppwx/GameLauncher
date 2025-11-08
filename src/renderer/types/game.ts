@@ -35,6 +35,7 @@ export interface Game {
   tags?: string[] | null
   playtime?: number | null
   timeLastPlay?: number | null
+  notes?: string | null
 }
 
 export interface Tag {

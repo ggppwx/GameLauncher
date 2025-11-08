@@ -56,9 +56,15 @@ function fetchSteamGameData(appId, attempt = 1) {
           }
           const json = JSON.parse(data);
           const entry = json[String(appId)];
+
+
+          // print out entry for Broken Arrow
+          // console.log(`[thumbnailManager] AppID ${appId} - Entry:`, entry);
+
           if (entry && entry.success === true && entry.data) {
             resolve(entry.data);
           } else {
+            console.error('Game not found or no data field', entry, urlObj.toString());
             throw new Error('Game not found or no data field');
           }
         } catch (e) {
@@ -125,7 +131,6 @@ function downloadImage(url, filePath) {
       
       https.get(requestUrl, (response) => {
         clearTimeout(timeoutId);
-        console.log(`Response status: ${response.statusCode} for ${requestUrl}`);
         
         // Handle redirects
         if (response.statusCode === 301 || response.statusCode === 302) {
@@ -316,6 +321,9 @@ async function downloadCoverImage(appId, localLibraryCacheDir) {
       console.log(`Local library cache check failed: ${localErr.message}`);
       // continue to network downloads
     }
+
+
+
     
     // Try URLs in order of preference (2x first, then regular)
     const coverUrls = [
@@ -438,11 +446,16 @@ async function getOrDownloadCoverImage(appId, localLibraryCacheDir) {
 async function getGameMetadata(appId) {
   try {
     const gameData = await fetchSteamGameData(appId);    
+    // Log genres extraction for debugging
+    console.log(`[thumbnailManager] AppID ${appId} - Raw genres from API:`, gameData.genres);
+    const extractedGenres = gameData.genres?.map(g => g.description) || [];
+    console.log(`[thumbnailManager] AppID ${appId} - Extracted genres:`, extractedGenres);
+    
     const metadata = {
       name: gameData.name,
       description: gameData.detailed_description,
       shortDescription: gameData.short_description,
-      genres: gameData.genres?.map(g => g.description) || [],
+      genres: extractedGenres,
       releaseDate: gameData.release_date?.date,
       developer: gameData.developers?.join(', '),
       publisher: gameData.publishers?.join(', '),
@@ -459,7 +472,7 @@ async function getGameMetadata(appId) {
       recommendations: gameData.recommendations?.total
     };
     
-    console.log(`Extracted metadata for ${appId}:`, metadata);
+    // console.log(`Extracted metadata for ${appId}:`, metadata);
     return metadata;
   } catch (error) {
     console.error(`Error fetching metadata for app ${appId}:`, error);

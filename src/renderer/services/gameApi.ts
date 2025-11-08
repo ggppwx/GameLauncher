@@ -74,6 +74,16 @@ export class GameApi {
     return apiClient.invoke<{ success: boolean }>('removeGame', gameId);
   }
 
+  // Retrieve missing data for a game
+  async retrieveMissingData(gameId: string): Promise<{ success: boolean; message: string }> {
+    return apiClient.invoke<{ success: boolean; message: string }>('retrieveMissingData', gameId);
+  }
+
+  // Refresh all missing data for installed games
+  async refreshAllMissingData(): Promise<{ success: boolean; total: number; successful: number; failed: number; errors?: { game: string; error: string }[] }> {
+    return apiClient.invoke<{ success: boolean; total: number; successful: number; failed: number; errors?: { game: string; error: string }[] }>('refreshAllMissingData');
+  }
+
   // Listen to scan progress
   onScanProgress(callback: (progress: ScanProgress) => void): void {
     apiClient.onScanProgress((_event, data) => callback(data));

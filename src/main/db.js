@@ -81,6 +81,23 @@ function setupDB() {
       FOREIGN KEY (game_id) REFERENCES games (id)
     )`);
 
+    // Create bandit_models table for LinUCB model storage
+    db.run(`CREATE TABLE IF NOT EXISTS bandit_models (
+      game_id TEXT PRIMARY KEY,
+      model_data TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (game_id) REFERENCES games (id)
+    )`);
+
+    // Create recommendation_feedback table for tracking recommendations
+    db.run(`CREATE TABLE IF NOT EXISTS recommendation_feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      FOREIGN KEY (game_id) REFERENCES games (id)
+    )`);
+
   });
   module.exports.db = db;
 }
